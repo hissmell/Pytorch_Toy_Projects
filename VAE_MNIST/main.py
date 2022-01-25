@@ -14,7 +14,7 @@ model = TestModel()
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 path_dict,is_continue = initial_env_setting(exp_name=exp_name,is_continue=is_continue)
-train_data_loader,valid_data_loader = load_image_dataset(data_dir_path=data_dir_path,image_size=32)
+train_data_loader,valid_data_loader = load_mnist_dataset(data_dir_path=data_dir_path,image_size=32)
 model,training_data,start_epoch = load_from_check_point(path_dict=path_dict,
                                                         model=model,
                                                         model_name=model_name,

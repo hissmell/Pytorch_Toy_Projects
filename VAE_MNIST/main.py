@@ -1,5 +1,5 @@
 from utils.learning_env_setting import initial_env_setting,load_from_check_point,save_to_check_point
-from utils.dataset import load_image_dataset
+from utils.dataset import load_mnist_dataset
 from utils.train import fit,record_training_data
 from models import TestModel
 from torch.optim import Adam

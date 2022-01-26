@@ -80,15 +80,16 @@ def generate_images_with_range(images,labels,model,axes = (0,1),x_range = (-1,1)
 
     z = deepcopy(means.detach().numpy())
     z = torch.from_numpy(z)
+    z_origin = deepcopy(z)
     axis_num = 1
     fig = plt.figure()
     plt.title(f"Latent Feature {axes[0]} and {axes[1]} | Label : {labels.detach().numpy()[0]}")
     plt.xticks([])
     plt.yticks([])
     for axis_0_deviate in axis_0_array:
-        z[:,axes[0]] += axis_0_deviate
+        z[:,axes[0]] = z_origin[:,axes[0]] + axis_0_deviate
         for axis_1_deviate in axis_1_array:
-            z[:,axes[1]] += axis_1_deviate
+            z[:,axes[1]] = z_origin[:,axes[1]] + axis_1_deviate
             outputs = model.decoder(z)
 
             outputs = np.clip(outputs.detach().numpy(), 0.0, 1.0)
@@ -101,4 +102,5 @@ def generate_images_with_range(images,labels,model,axes = (0,1),x_range = (-1,1)
             axis.set_xticks([])
             axis.set_yticks([])
             axis_num += 1
+            z = deepcopy(z_origin)
     plt.show()

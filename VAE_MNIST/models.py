@@ -61,7 +61,7 @@ class VAE(Module):
         means,variances = self.encoder(x)
         z = self.sampler(means,variances)
         output = self.decoder(z)
-        return output
+        return output,means,variances
 
 
 
@@ -69,7 +69,9 @@ if __name__ =='__main__':
     import numpy as np
     test_input = torch.from_numpy(np.random.randn(64,1,28,28).astype(np.float32))
     model = VAE()
-    test_ouput = model(test_input)
-    print(test_ouput.shape)
+    test_ouput,test_means,test_variances = model(test_input)
+    print(test_ouput.size())
     print(test_ouput.dtype)
+    print(test_means.size())
+    print(test_variances.size())
     print(model)

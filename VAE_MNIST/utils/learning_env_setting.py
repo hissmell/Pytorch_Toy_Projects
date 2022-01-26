@@ -47,10 +47,12 @@ def load_from_check_point(path_dict,model,model_name = None,from_check_point = N
         check_point_list = os.listdir(path_dict['exp_path'])
         if check_point_list == []:
             training_data = {}
-            training_data['train_losses'] = []
-            training_data['valid_losses'] = []
-            training_data['train_accuracies'] = []
-            training_data['valid_accuracies'] = []
+            training_data['train_total_losses'] = []
+            training_data['train_reconstruction_losses'] = []
+            training_data['train_regularization_losses'] = []
+            training_data['valid_total_losses'] = []
+            training_data['valid_reconstruction_losses'] = []
+            training_data['valid_regularization_losses'] = []
             start_epoch = 0
         else:
             epoch_list = [int(check_point.split('_')[-1].split('.')[0]) for check_point in check_point_list]
@@ -73,10 +75,12 @@ def load_from_check_point(path_dict,model,model_name = None,from_check_point = N
             start_epoch = last_epoch + 1
     else:
         training_data = {}
-        training_data['train_losses'] = []
-        training_data['valid_losses'] = []
-        training_data['train_accuracies'] = []
-        training_data['valid_accuracies'] = []
+        training_data['train_total_losses'] = []
+        training_data['train_reconstruction_losses'] = []
+        training_data['train_regularization_losses'] = []
+        training_data['valid_total_losses'] = []
+        training_data['valid_reconstruction_losses'] = []
+        training_data['valid_regularization_losses'] = []
         start_epoch = 0
 
     return model,training_data,start_epoch
@@ -99,28 +103,46 @@ def save_to_check_point(model,training_data,path_dict,model_name,epoch):
         os.makedirs(check_point_path,exist_ok=True)
 
     # 트레이닝 데이터 저장
-    np.savez_compressed(os.path.join(check_point_path,'training_data.npz'),train_losses = training_data['train_losses']
-                                        ,train_accuracies = training_data['train_accuracies']
-                                        ,valid_losses = training_data['valid_losses']
-                                        ,valid_accuracies = training_data['valid_accuracies'])
+    np.savez_compressed(os.path.join(check_point_path,'training_data.npz'),train_total_losses = training_data['train_total_losses']
+                                        ,train_reconstruction_losses = training_data['trian_reconstruction_losses']
+                                        ,train_regularization_losses = training_data['train_regularization_losses']
+                                        ,valid_total_losses = training_data['valid_total_losses']
+                                        ,valid_reconstruction_losses=training_data['valid_reconstruction_losses']
+                                        ,valid_regularization_losses=training_data['valid_regularization_losses'])
 
     # 모델 저장
     torch.save(model.state_dict(),os.path.join(check_point_path,model_name+'.pth'))
 
     # 그래프 저장
     fig,axes = plt.subplots(2,1,figsize = (15,12))
-    epoch_range = np.arange(1,1+len(training_data['train_losses']))
-    axes[0].plot(epoch_range,training_data['train_losses'],color = 'blue',linewidth = 2,label = 'Train loss')
-    axes[0].plot(epoch_range,training_data['valid_losses'],color = 'orange',linewidth = 2,label = 'Valid loss')
-    axes[0].set_ylabel('Cross Entropy loss')
+    epoch_range = np.arange(1,1+len(training_data['train_total_losses']))
+    axes[0].plot(epoch_range,training_data['trian_reconstruction_losses'],color = 'blue',linewidth = 2,label = 'Train loss')
+    axes[0].plot(epoch_range,training_data['valid_reconstruction_losses'],color = 'orange',linewidth = 2,label = 'Valid loss')
+    axes[0].set_ylabel('Reconstruction Loss')
     axes[0].grid()
     axes[0].legend(loc = 'upper right')
-    axes[1].plot(epoch_range,training_data['train_accuracies'],color = 'blue',linewidth = 2,label = 'Train accuracy')
-    axes[1].plot(epoch_range,training_data['valid_accuracies'],color = 'orange',linewidth = 2,label = 'Valid accuracy')
-    axes[1].set_ylabel('Accuracy')
+    axes[0].set_title('Reconstruction Loss & Regularization Loss Graph')
+    axes[1].plot(epoch_range,training_data['train_regularization_losses'],color = 'blue',linewidth = 2,label = 'Train loss')
+    axes[1].plot(epoch_range,training_data['valid_regularization_losses'],color = 'orange',linewidth = 2,label = 'Valid loss')
+    axes[1].set_ylabel('Regularization Loss')
     axes[1].grid()
     axes[1].legend(loc = 'lower right')
-    fig.savefig(check_point_path + '/training_figure.png')
+    axes[1].set_xlabel('Epoch')
+    fig.savefig(check_point_path + '/training_figure_detail.png')
+    plt.close()
+
+    fig, axis = plt.subplots(figsize=(15, 12))
+    epoch_range = np.arange(1, 1 + len(training_data['train_total_losses']))
+    axis.plot(epoch_range, training_data['train_total_losses'], color='blue', linewidth=2,
+                 label='Train loss')
+    axis.plot(epoch_range, training_data['valid_total_losses'], color='orange', linewidth=2,
+                 label='Valid loss')
+    axis.set_ylabel('Total Loss')
+    axis.set_xlabel('Epoch')
+    axis.grid()
+    axis.legend(loc='upper right')
+    axis.set_title('Total Loss Graph')
+    fig.savefig(check_point_path + '/training_figure_total.png')
     plt.close()
 
 

@@ -6,9 +6,9 @@ from torch.optim import Adam
 import torch
 
 # 학습 환경 설정
-exp_name = 'Exp_Latent_Space_Size4'
+exp_name = 'Exp_Latent_Size4_01'
 model_name = 'VAE_Latent_Size4'
-is_continue = False
+is_continue = True
 model = VAE(latent_space_size=4)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -20,9 +20,9 @@ model,training_data,start_epoch = load_from_check_point(path_dict=path_dict,
                                                         is_continue = is_continue)
 
 # 학습
-max_epoch = 100
+max_epoch = 200
 learning_rate = 1e-4
-save_term = 3
+save_term = 10
 optimizer = Adam(model.parameters(),lr = learning_rate)
 for epoch in range(start_epoch,max_epoch):
     train_total_loss,train_reconstruction_loss,train_regularization_loss = fit(epoch,model,optimizer,train_data_loader,phase='training',device=device)

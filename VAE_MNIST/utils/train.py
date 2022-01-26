@@ -53,12 +53,12 @@ def fit(epoch,model,optimizer,data_loader,phase = 'training',device = 'cuda'):
         outputs,means,variances = model(inputs)
 
         # 여기에 loss 구현
-        reconstruction_loss = torch.sum(torch.square(outputs - labels)) / (28*28)
+        reconstruction_loss = torch.sum(torch.square(outputs - labels))
 
         standard_normal_distributions = Normal(torch.zeros(size=(batch_size,latent_space_size)).to(device)
                                                ,torch.ones(size=(batch_size,latent_space_size)).to(device))
         target_normal_distributions = Normal(means,torch.sqrt(variances))
-        regularization_loss = kl_divergence(p = standard_normal_distributions,q = target_normal_distributions).mean()
+        regularization_loss = kl_divergence(p = standard_normal_distributions,q = target_normal_distributions).sum()
 
         total_loss = reconstruction_loss + regularization_loss
 

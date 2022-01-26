@@ -2,9 +2,9 @@ from utils.analysis import load_model_from,show_images_and_labels,show_image_wit
 from utils.dataset import load_mnist_dataset
 from models import VAE
 
-exp_name = 'Exp_Experiment01'
-model_name = 'VAE_Experiment01'
-check_point = 17
+exp_name = 'Exp_Latent_Space_Size4'
+model_name = 'VAE_Latent_Size4'
+check_point = 98
 
 train_data_loader,valid_data_loader = load_mnist_dataset(batch_size=8)
 model = VAE()

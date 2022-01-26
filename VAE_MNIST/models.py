@@ -29,9 +29,9 @@ class Sampler(Module):
     def __init__(self):
         super(Sampler, self).__init__()
 
-    def forward(self,means,variances):
+    def forward(self,means,variances,device='cuda'):
         batch_size = means.size()[0]
-        z = variances * torch.normal(0,1,size=(batch_size,3)) + means
+        z = variances * torch.normal(torch.zeros(size=(batch_size,3),dtype=torch.float32).to(device),torch.ones(size=(batch_size,3),dtype=torch.float32).to(device)) + means
         return z
 
 class Decoder(Module):
@@ -57,9 +57,9 @@ class VAE(Module):
         self.sampler = Sampler()
         self.decoder = Decoder()
 
-    def forward(self,x):
+    def forward(self,x,device='cuda'):
         means,variances = self.encoder(x)
-        z = self.sampler(means,variances)
+        z = self.sampler(means,variances,device)
         output = self.decoder(z)
         return output,means,variances
 
@@ -67,6 +67,8 @@ class VAE(Module):
 
 if __name__ =='__main__':
     import numpy as np
+    print(torch.Tensor([[0.,0.,0.],[0.,0.,0.]]))
+    print(torch.normal(mean=torch.Tensor([[0.,0.,0.],[0.,0.,0.]]),std=torch.Tensor([[1.,1.,1.],[1.,1.,1.]])))
     test_input = torch.from_numpy(np.random.randn(64,1,28,28).astype(np.float32))
     model = VAE()
     test_ouput,test_means,test_variances = model(test_input)

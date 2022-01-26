@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
-def initial_env_setting (exp_name,is_continue = True):
+def initial_env_setting(exp_name,is_continue = True):
     '''
     :param exp_name: 실험 이름입니당.
     :param is_continue: 이전의 학습을 이어서 할지 설정합니다.
@@ -99,12 +99,11 @@ def save_to_check_point(model,training_data,path_dict,model_name,epoch):
     # 디렉토리 생성
     if os.path.isdir(check_point_path):
         shutil.rmtree(check_point_path)
-    else:
-        os.makedirs(check_point_path,exist_ok=True)
+    os.makedirs(check_point_path,exist_ok=True)
 
     # 트레이닝 데이터 저장
     np.savez_compressed(os.path.join(check_point_path,'training_data.npz'),train_total_losses = training_data['train_total_losses']
-                                        ,train_reconstruction_losses = training_data['trian_reconstruction_losses']
+                                        ,train_reconstruction_losses = training_data['train_reconstruction_losses']
                                         ,train_regularization_losses = training_data['train_regularization_losses']
                                         ,valid_total_losses = training_data['valid_total_losses']
                                         ,valid_reconstruction_losses=training_data['valid_reconstruction_losses']
@@ -116,7 +115,7 @@ def save_to_check_point(model,training_data,path_dict,model_name,epoch):
     # 그래프 저장
     fig,axes = plt.subplots(2,1,figsize = (15,12))
     epoch_range = np.arange(1,1+len(training_data['train_total_losses']))
-    axes[0].plot(epoch_range,training_data['trian_reconstruction_losses'],color = 'blue',linewidth = 2,label = 'Train loss')
+    axes[0].plot(epoch_range,training_data['train_reconstruction_losses'],color = 'blue',linewidth = 2,label = 'Train loss')
     axes[0].plot(epoch_range,training_data['valid_reconstruction_losses'],color = 'orange',linewidth = 2,label = 'Valid loss')
     axes[0].set_ylabel('Reconstruction Loss')
     axes[0].grid()

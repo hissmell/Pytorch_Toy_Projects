@@ -25,12 +25,13 @@ def fit(epoch,model,optimizer,data_loader,phase = 'training',device = 'cuda'):
         device = 'cpu'
     model.to(device)
 
-    print(colored(f"Epoch : {epoch:4d}  (In {phase} session)",'orange'))
+    print(colored(f"Epoch : {epoch:4d}  (In {phase} session)",'yellow'))
     total_data_num = len(data_loader.dataset)
     running_total_loss = 0.0
     running_reconstruction_loss = 0.0
     running_regularization_loss = 0.0
     for batch_idx,(inputs,_) in enumerate(data_loader):
+
         batch_size = inputs.size()[0]
         labels = copy.deepcopy(inputs)
         if phase == 'training':
@@ -45,13 +46,15 @@ def fit(epoch,model,optimizer,data_loader,phase = 'training',device = 'cuda'):
 
         inputs = Variable(inputs)
         labels = Variable(labels)
+        inputs = inputs.to(device)
+        labels = labels.to(device)
 
         outputs,means,variances = model(inputs)
 
         # 여기에 loss 구현
         reconstruction_loss = torch.sum(torch.square(outputs - labels)) / (28*28)
 
-        standard_normal_distributions = Normal(torch.zeros(size=(batch_size,3)),torch.ones(size=(batch_size,3)))
+        standard_normal_distributions = Normal(torch.zeros(size=(batch_size,3)).to(device),torch.ones(size=(batch_size,3)).to(device))
         target_normal_distributions = Normal(means,torch.sqrt(variances))
         regularization_loss = kl_divergence(p = standard_normal_distributions,q = target_normal_distributions).mean()
 
@@ -70,6 +73,7 @@ def fit(epoch,model,optimizer,data_loader,phase = 'training',device = 'cuda'):
     epoch_regularization_loss = running_regularization_loss / total_data_num
 
     print(colored(f"Total Loss : {epoch_total_loss:.6f}\nReconstruction Loss : {epoch_reconstruction_loss:.6f}  Regularization Loss {epoch_regularization_loss:.6f}",'blue'))
+    print()
     return epoch_total_loss,epoch_reconstruction_loss,epoch_regularization_loss
 
 def record_training_data(training_data,phase,epoch_total_loss,epoch_reconstruction_loss,epoch_regularization_loss):
@@ -80,6 +84,10 @@ def record_training_data(training_data,phase,epoch_total_loss,epoch_reconstructi
     :param epoch_accuracy:
     :return:
     '''
+    epoch_total_loss = epoch_total_loss.to('cpu')
+    epoch_reconstruction_loss = epoch_reconstruction_loss.to('cpu')
+    epoch_regularization_loss = epoch_regularization_loss.to('cpu')
+
     if phase == 'training':
         training_data['train_total_losses'].append(epoch_total_loss)
         training_data['train_reconstruction_losses'].append(epoch_reconstruction_loss)

@@ -6,10 +6,10 @@ from torch.optim import Adam
 import torch
 
 # 학습 환경 설정
-exp_name = 'Exp_Experiment01'
-model_name = 'VAE_Experiment01'
+exp_name = 'Exp_Latent_Space_Size4'
+model_name = 'VAE_Latent_Size4'
 is_continue = False
-model = VAE()
+model = VAE(latent_space_size=4)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 path_dict,is_continue = initial_env_setting(exp_name=exp_name,is_continue=is_continue)

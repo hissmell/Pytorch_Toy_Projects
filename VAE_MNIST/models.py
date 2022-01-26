@@ -2,8 +2,9 @@ import torch
 from torch.nn import Module,Linear,ReLU,Conv2d,MaxPool2d,Flatten,ConvTranspose2d
 
 class Encoder(Module):
-    def __init__(self):
+    def __init__(self,latent_space_size):
         super(Encoder, self).__init__()
+        self.latent_space_size = latent_space_size
         self.conv1 = Conv2d(1,64,kernel_size=(3,3),stride=(1,1),padding=(1,1),dtype=torch.float32)
         self.maxpool1 = MaxPool2d(kernel_size=(2,2),stride=(2,2))
         self.relu1 = ReLU()
@@ -13,8 +14,8 @@ class Encoder(Module):
         self.conv3 = Conv2d(64,64,kernel_size=(3,3),stride=(1,1),padding=(1,1),dtype=torch.float32)
         self.relu3 = ReLU()
         self.flatten = Flatten(start_dim=1)
-        self.mean = Linear(3136,3,dtype=torch.float32)
-        self.log_variance = Linear(3136,3,dtype=torch.float32)
+        self.mean = Linear(3136,latent_space_size,dtype=torch.float32)
+        self.log_variance = Linear(3136,latent_space_size,dtype=torch.float32)
 
     def forward(self,x):
         x = self.relu1(self.maxpool1(self.conv1(x)))
@@ -26,18 +27,21 @@ class Encoder(Module):
         return means,variances
 
 class Sampler(Module):
-    def __init__(self):
+    def __init__(self,latent_space_size):
         super(Sampler, self).__init__()
+        self.latent_space_size = latent_space_size
 
     def forward(self,means,variances,device='cuda'):
         batch_size = means.size()[0]
-        z = variances * torch.normal(torch.zeros(size=(batch_size,3),dtype=torch.float32).to(device),torch.ones(size=(batch_size,3),dtype=torch.float32).to(device)) + means
+        z = variances * torch.normal(torch.zeros(size=(batch_size,self.latent_space_size),dtype=torch.float32).to(device)
+                                     ,torch.ones(size=(batch_size,self.latent_space_size),dtype=torch.float32).to(device)) + means
         return z
 
 class Decoder(Module):
-    def __init__(self):
+    def __init__(self,latent_space_size):
         super(Decoder, self).__init__()
-        self.dense = Linear(3,3136,dtype=torch.float32)
+        self.latent_space_size = latent_space_size
+        self.dense = Linear(latent_space_size,3136,dtype=torch.float32)
         self.relu1 = ReLU()
         self.deconv1 = ConvTranspose2d(64,64,kernel_size=(4,4),stride=(2,2),padding=(1,1),dtype=torch.float32)
         self.relu2 = ReLU()
@@ -51,11 +55,12 @@ class Decoder(Module):
         return x
 
 class VAE(Module):
-    def __init__(self):
+    def __init__(self,latent_space_size = 4):
         super(VAE, self).__init__()
-        self.encoder = Encoder()
-        self.sampler = Sampler()
-        self.decoder = Decoder()
+        self.latent_space_size = latent_space_size
+        self.encoder = Encoder(latent_space_size)
+        self.sampler = Sampler(latent_space_size)
+        self.decoder = Decoder(latent_space_size)
 
     def forward(self,x,device='cuda'):
         means,variances = self.encoder(x)

@@ -30,6 +30,7 @@ def fit(epoch,model,optimizer,data_loader,phase = 'training',device = 'cuda'):
     running_total_loss = 0.0
     running_reconstruction_loss = 0.0
     running_regularization_loss = 0.0
+    latent_space_size = model.latent_space_size
     for batch_idx,(inputs,_) in enumerate(data_loader):
 
         batch_size = inputs.size()[0]
@@ -54,7 +55,8 @@ def fit(epoch,model,optimizer,data_loader,phase = 'training',device = 'cuda'):
         # 여기에 loss 구현
         reconstruction_loss = torch.sum(torch.square(outputs - labels)) / (28*28)
 
-        standard_normal_distributions = Normal(torch.zeros(size=(batch_size,3)).to(device),torch.ones(size=(batch_size,3)).to(device))
+        standard_normal_distributions = Normal(torch.zeros(size=(batch_size,latent_space_size)).to(device)
+                                               ,torch.ones(size=(batch_size,latent_space_size)).to(device))
         target_normal_distributions = Normal(means,torch.sqrt(variances))
         regularization_loss = kl_divergence(p = standard_normal_distributions,q = target_normal_distributions).mean()
 

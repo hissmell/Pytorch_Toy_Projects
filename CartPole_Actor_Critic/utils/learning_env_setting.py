@@ -47,7 +47,10 @@ def load_from_check_point(path_dict,model,model_name = None,from_check_point = N
         check_point_list = os.listdir(path_dict['exp_path'])
         if check_point_list == []:
             training_data = {}
-            training_data['train_losses'] = []
+            training_data['average_term'] = -1
+            training_data['train_total_losses'] = []
+            training_data['train_policy_losses'] = []
+            training_data['train_value_losses'] = []
             training_data['train_scores'] = []
             start_episode = 0
         else:
@@ -71,7 +74,10 @@ def load_from_check_point(path_dict,model,model_name = None,from_check_point = N
             start_episode = last_episode + 1
     else:
         training_data = {}
-        training_data['train_losses'] = []
+        training_data['average_term'] = -1
+        training_data['train_total_losses'] = []
+        training_data['train_policy_losses'] = []
+        training_data['train_value_losses'] = []
         training_data['train_scores'] = []
         start_episode = 0
 
@@ -94,16 +100,20 @@ def save_to_check_point(model,training_data,path_dict,model_name,episode):
     os.makedirs(check_point_path,exist_ok=True)
 
     # 트레이닝 데이터 저장
-    np.savez_compressed(os.path.join(check_point_path,'training_data.npz'),train_losses = training_data['train_losses']
-                                        ,train_scores = training_data['train_scores'])
+    np.savez_compressed(os.path.join(check_point_path,'training_data.npz')
+                                    ,average_term = training_data['average_term']
+                                    ,train_total_losses = training_data['train_losses']
+                                    ,train_policy_losses = training_data['train_policy_losses']
+                                    ,train_value_losses = training_data['train_value_losses']
+                                    ,train_scores = training_data['train_scores'])
 
     # 모델 저장
     torch.save(model.state_dict(),os.path.join(check_point_path,model_name+'.pth'))
 
     # 그래프 저장
     fig,axes = plt.subplots(2,1,figsize = (15,12))
-    epoch_range = np.arange(1,1+len(training_data['train_losses']))
-    axes[0].plot(epoch_range,training_data['train_losses'],color = 'blue',linewidth = 2,label = 'Train Loss')
+    epoch_range = np.arange(1,1+len(training_data['train_total_losses']))
+    axes[0].plot(epoch_range,training_data['train_total_losses'],color = 'blue',linewidth = 2,label = 'Train Loss')
     axes[0].set_ylabel('Loss')
     axes[0].grid()
     axes[0].set_title('Loss & Score Graph')
@@ -112,8 +122,24 @@ def save_to_check_point(model,training_data,path_dict,model_name,episode):
     axes[1].set_ylabel('Score')
     axes[1].grid()
     axes[1].legend(loc = 'lower right')
+    axes[1].set_xlabel(f"Episode (x {training_data['average_term']})")
     fig.savefig(check_point_path + '/training_figure.png')
     plt.close()
+
+    fig,axes = plt.subplots(2,1,figsize = (15,12))
+    axes[0].plot(epoch_range,training_data['train_policy_losses'],color = 'blue',linewidth = 2,label = 'Train Policy Loss')
+    axes[0].set_ylabel('Loss')
+    axes[0].grid()
+    axes[0].set_title('Policy Loss & Value Loss Graph')
+    axes[0].legend(loc = 'upper right')
+    axes[1].plot(epoch_range,training_data['train_value_losses'],color = 'blue',linewidth = 2,label = 'Train Value Score')
+    axes[1].set_ylabel('Score')
+    axes[1].grid()
+    axes[1].legend(loc = 'upper right')
+    axes[1].set_xlabel(f"Episode (x {training_data['average_term']})")
+    fig.savefig(check_point_path + '/training_figure_detail.png')
+    plt.close()
+
 
 
 

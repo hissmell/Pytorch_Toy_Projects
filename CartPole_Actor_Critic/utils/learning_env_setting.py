@@ -41,7 +41,7 @@ def load_from_check_point(path_dict,model,model_name = None,from_check_point = N
     :param model: 반드시 기본 모델을 입력해줘야 합니다.
     :param model_name: 모델의 이름을 지정해줘야합니다.
     :param is_continue: 이전의 학습을 이어서 할지 설정합니다.
-    :return: model,training_data,start_epoch 을 반환합니다.
+    :return: model,training_data,start_episode 를 반환합니다.
     '''
     if is_continue:
         check_point_list = os.listdir(path_dict['exp_path'])
@@ -49,48 +49,48 @@ def load_from_check_point(path_dict,model,model_name = None,from_check_point = N
             training_data = {}
             training_data['train_losses'] = []
             training_data['valid_losses'] = []
-            training_data['train_accuracies'] = []
-            training_data['valid_accuracies'] = []
-            start_epoch = 0
+            training_data['train_scores'] = []
+            training_data['valid_scores'] = []
+            start_episode = 0
         else:
-            epoch_list = [int(check_point.split('_')[-1].split('.')[0]) for check_point in check_point_list]
-            epoch_list.sort()
+            episode_list = [int(check_point.split('_')[-1].split('.')[0]) for check_point in check_point_list]
+            episode_list.sort()
             if from_check_point == None:
-                last_epoch = epoch_list[-1]
+                last_episode = episode_list[-1]
             else:
-                if int(from_check_point) in epoch_list:
-                    last_epoch = from_check_point
+                if int(from_check_point) in episode_list:
+                    last_episode = from_check_point
                 else:
                     print(f"check_point_{from_check_point} is not in the check_point list")
                     sys.exit()
-            model_path = os.path.join(path_dict['exp_path'],'check_point_'+str(last_epoch),model_name + '.pth')
+            model_path = os.path.join(path_dict['exp_path'],'check_point_' + str(last_episode), model_name + '.pth')
             model.load_state_dict(torch.load(model_path))
 
-            training_data_np = np.load(os.path.join(path_dict['exp_path'],'check_point_'+str(last_epoch),'training_data.npz'))
+            training_data_np = np.load(os.path.join(path_dict['exp_path'],'check_point_' + str(last_episode), 'training_data.npz'))
             training_data = {}
             for key,value in training_data_np.items():
                 training_data[key] = list(value)
-            start_epoch = last_epoch + 1
+            start_episode = last_episode + 1
     else:
         training_data = {}
         training_data['train_losses'] = []
         training_data['valid_losses'] = []
-        training_data['train_accuracies'] = []
-        training_data['valid_accuracies'] = []
-        start_epoch = 0
+        training_data['train_scores'] = []
+        training_data['valid_scores'] = []
+        start_episode = 0
 
-    return model,training_data,start_epoch
+    return model, training_data, start_episode
 
-def save_to_check_point(model,training_data,path_dict,model_name,epoch):
+def save_to_check_point(model,training_data,path_dict,model_name,episode):
     '''
     :param model: 저장하고자 하는 모델
     :param training_data: 이전까지 학습 과정이 담겨있음
     :param path_dict: 경로들을 담은 dict
     :param model_name: 모델 명
-    :param epoch: epoch
+    :param episode: episode
     :return: 값을 반환하지 않습니다.
     '''
-    check_point_path = os.path.join(path_dict['exp_path'],'check_point_'+str(epoch))
+    check_point_path = os.path.join(path_dict['exp_path'],'check_point_' + str(episode))
 
     # 디렉토리 생성
     if os.path.isdir(check_point_path):
@@ -99,9 +99,9 @@ def save_to_check_point(model,training_data,path_dict,model_name,epoch):
 
     # 트레이닝 데이터 저장
     np.savez_compressed(os.path.join(check_point_path,'training_data.npz'),train_losses = training_data['train_losses']
-                                        ,train_accuracies = training_data['train_accuracies']
+                                        ,train_scores = training_data['train_scores']
                                         ,valid_losses = training_data['valid_losses']
-                                        ,valid_accuracies = training_data['valid_accuracies'])
+                                        ,valid_scores = training_data['valid_scores'])
 
     # 모델 저장
     torch.save(model.state_dict(),os.path.join(check_point_path,model_name+'.pth'))
@@ -109,14 +109,15 @@ def save_to_check_point(model,training_data,path_dict,model_name,epoch):
     # 그래프 저장
     fig,axes = plt.subplots(2,1,figsize = (15,12))
     epoch_range = np.arange(1,1+len(training_data['train_losses']))
-    axes[0].plot(epoch_range,training_data['train_losses'],color = 'blue',linewidth = 2,label = 'Train loss')
-    axes[0].plot(epoch_range,training_data['valid_losses'],color = 'orange',linewidth = 2,label = 'Valid loss')
-    axes[0].set_ylabel('Cross Entropy loss')
+    axes[0].plot(epoch_range,training_data['train_losses'],color = 'blue',linewidth = 2,label = 'Train Loss')
+    axes[0].plot(epoch_range,training_data['valid_losses'],color = 'orange',linewidth = 2,label = 'Valid Loss')
+    axes[0].set_ylabel('Loss')
     axes[0].grid()
+    axes[0].set_title('Loss & Score Graph')
     axes[0].legend(loc = 'upper right')
-    axes[1].plot(epoch_range,training_data['train_accuracies'],color = 'blue',linewidth = 2,label = 'Train accuracy')
-    axes[1].plot(epoch_range,training_data['valid_accuracies'],color = 'orange',linewidth = 2,label = 'Valid accuracy')
-    axes[1].set_ylabel('Accuracy')
+    axes[1].plot(epoch_range,training_data['train_scores'],color = 'blue',linewidth = 2,label = 'Train Score')
+    axes[1].plot(epoch_range,training_data['valid_scores'],color = 'orange',linewidth = 2,label = 'Valid Score')
+    axes[1].set_ylabel('Score')
     axes[1].grid()
     axes[1].legend(loc = 'lower right')
     fig.savefig(check_point_path + '/training_figure.png')

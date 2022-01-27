@@ -33,7 +33,8 @@ for epoch in range(start_epoch,max_epoch):
     record_training_data(training_data,phase='validation',epoch_loss=valid_epoch_loss,epoch_accuracy=valid_epoch_accuracy)
 
     if epoch % save_term == (save_term-1):
-        save_to_check_point(model=model,training_data=training_data,path_dict=path_dict,model_name=model_name,epoch=epoch)
+        save_to_check_point(model=model, training_data=training_data, path_dict=path_dict, model_name=model_name,
+                            episode=epoch)
 
 
 

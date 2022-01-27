@@ -48,9 +48,7 @@ def load_from_check_point(path_dict,model,model_name = None,from_check_point = N
         if check_point_list == []:
             training_data = {}
             training_data['train_losses'] = []
-            training_data['valid_losses'] = []
             training_data['train_scores'] = []
-            training_data['valid_scores'] = []
             start_episode = 0
         else:
             episode_list = [int(check_point.split('_')[-1].split('.')[0]) for check_point in check_point_list]
@@ -74,9 +72,7 @@ def load_from_check_point(path_dict,model,model_name = None,from_check_point = N
     else:
         training_data = {}
         training_data['train_losses'] = []
-        training_data['valid_losses'] = []
         training_data['train_scores'] = []
-        training_data['valid_scores'] = []
         start_episode = 0
 
     return model, training_data, start_episode
@@ -99,9 +95,7 @@ def save_to_check_point(model,training_data,path_dict,model_name,episode):
 
     # 트레이닝 데이터 저장
     np.savez_compressed(os.path.join(check_point_path,'training_data.npz'),train_losses = training_data['train_losses']
-                                        ,train_scores = training_data['train_scores']
-                                        ,valid_losses = training_data['valid_losses']
-                                        ,valid_scores = training_data['valid_scores'])
+                                        ,train_scores = training_data['train_scores'])
 
     # 모델 저장
     torch.save(model.state_dict(),os.path.join(check_point_path,model_name+'.pth'))
@@ -110,13 +104,11 @@ def save_to_check_point(model,training_data,path_dict,model_name,episode):
     fig,axes = plt.subplots(2,1,figsize = (15,12))
     epoch_range = np.arange(1,1+len(training_data['train_losses']))
     axes[0].plot(epoch_range,training_data['train_losses'],color = 'blue',linewidth = 2,label = 'Train Loss')
-    axes[0].plot(epoch_range,training_data['valid_losses'],color = 'orange',linewidth = 2,label = 'Valid Loss')
     axes[0].set_ylabel('Loss')
     axes[0].grid()
     axes[0].set_title('Loss & Score Graph')
     axes[0].legend(loc = 'upper right')
     axes[1].plot(epoch_range,training_data['train_scores'],color = 'blue',linewidth = 2,label = 'Train Score')
-    axes[1].plot(epoch_range,training_data['valid_scores'],color = 'orange',linewidth = 2,label = 'Valid Score')
     axes[1].set_ylabel('Score')
     axes[1].grid()
     axes[1].legend(loc = 'lower right')

@@ -1,30 +1,37 @@
 from utils.learning_env_setting import initial_env_setting,load_from_check_point,save_to_check_point
-from utils.dataset import load_image_dataset
-from utils.train import fit,record_training_data
+from utils.game import *
+from agents import BasicAgent
 from models import TestModel
 from torch.optim import Adam
+import gym
 import torch
 
+# 학습 하이퍼파라미터
+max_epoch = 100
+learning_rate = 1e-4
+save_term = 200
+
 # 학습 환경 설정
-data_dir_path = 'C:\\Users\\82102\\PycharmProjects\\ReinforcementLearning\\Toy_project\\Cifar_100\\cifar100_data'
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 exp_name = 'Test_experiment'
-model_name = 'Test_Model'
+model_name = 'TD(0)_ActorCritic'
 is_continue = True
 model = TestModel()
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+optimizer = Adam(model.parameters(),lr = learning_rate)
 
+# 이전 훈련 데이터 로드
 path_dict,is_continue = initial_env_setting(exp_name=exp_name,is_continue=is_continue)
-train_data_loader,valid_data_loader = load_image_dataset(data_dir_path=data_dir_path,image_size=32)
-model,training_data,start_epoch = load_from_check_point(path_dict=path_dict,
+model,training_data,start_episode = load_from_check_point(path_dict=path_dict,
                                                         model=model,
                                                         model_name=model_name,
                                                         is_continue = is_continue)
 
-# 학습
-max_epoch = 100
-learning_rate = 1e-4
-save_term = 5
-optimizer = Adam(model.parameters(),lr = learning_rate)
+
+agent = BasicAgent(model,optimizer)
+agent.to(device=device)
+env = gym.make('CartPole-v1')
+
+
 for epoch in range(start_epoch,max_epoch):
     train_epoch_loss,train_epoch_accuracy = fit(epoch,model,optimizer,train_data_loader,phase='training',device=device)
     valid_epoch_loss,valid_epoch_accuracy = fit(epoch,model,optimizer,valid_data_loader,phase='validation',device=device)

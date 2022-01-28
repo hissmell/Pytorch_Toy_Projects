@@ -58,14 +58,14 @@ for episode in range(start_episode,max_episode):
         next_observation,reward,done,info = env.step(action_index)
 
         running_score += reward
-        reward = 0.1 if not done or running_score == 500 else -1
+        reward = 0.1 if not done or running_score == 500 else -1 # reward is re-scaled for smooth training
 
         agent.append_replay_buffer(observation,action_index,reward,done,next_observation)
 
         observation = next_observation
 
     running_total_loss,running_policy_loss,running_value_loss = agent.fit()
-    agent.reset_replay_buffer()
+    agent.reset_replay_buffer() # reset replay_buffer after fit
 
     if (episode % record_term) == (record_term-1):
         record_training_data(training_data,running_score,running_total_loss,running_policy_loss,running_value_loss)

@@ -62,19 +62,19 @@ class ActorCriticAgent:
         dones = [replay[3] for replay in self.replay_buffer]
         next_states = [replay[4] for replay in self.replay_buffer]
 
-        states = torch.from_numpy(np.stack(states,axis = 0).astype(np.float32)).to(self.device)
-        action_indexes = torch.from_numpy(np.array(action_indexes)).type(torch.LongTensor).to(self.device)
-        actions = one_hot(action_indexes,self.action_space_size).type(torch.FloatTensor).to(self.device)
-        rewards = torch.unsqueeze(torch.from_numpy(np.array(rewards).astype(np.float32)).to(self.device),dim=1)
-        dones = torch.unsqueeze(torch.from_numpy(np.array(dones).astype(np.float32)).to(self.device),dim=1)
-        next_states = torch.from_numpy(np.stack(next_states,axis=0).astype(np.float32)).to(self.device)
+        states = torch.from_numpy(np.stack(states,axis = 0).astype(np.float32)).to(self.device)                 # shape = (N,4)
+        action_indexes = torch.from_numpy(np.array(action_indexes)).type(torch.LongTensor).to(self.device)      # shape = (N,)
+        actions = one_hot(action_indexes,self.action_space_size).type(torch.FloatTensor).to(self.device)        # shape = (N,2)
+        rewards = torch.unsqueeze(torch.from_numpy(np.array(rewards).astype(np.float32)).to(self.device),dim=1) # shape = (N,1)
+        dones = torch.unsqueeze(torch.from_numpy(np.array(dones).astype(np.float32)).to(self.device),dim=1)     # shape = (N,1)
+        next_states = torch.from_numpy(np.stack(next_states,axis=0).astype(np.float32)).to(self.device)         # shape = (N,4)
 
         # train
         policy,value = self.model(states)
         _,next_value = self.model(next_states)
         next_value = next_value * (1.0 - dones)
-        delta = rewards + self.gamma * next_value - value
-        delta_detached = delta.detach()
+        delta = rewards + self.gamma * next_value - value # shape = (N,1)
+        delta_detached = delta.detach() # make delta to constant
 
         value_loss = torch.sum(torch.square(delta))
         policy_loss = torch.sum(-torch.multiply(torch.log(torch.sum(policy*actions,dim=1,keepdim=True)),delta_detached))

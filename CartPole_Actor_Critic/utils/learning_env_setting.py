@@ -70,7 +70,10 @@ def load_from_check_point(path_dict,model,model_name = None,from_check_point = N
             training_data_np = np.load(os.path.join(path_dict['exp_path'],'check_point_' + str(last_episode), 'training_data.npz'))
             training_data = {}
             for key,value in training_data_np.items():
-                training_data[key] = list(value)
+                if value.shape == ():
+                    training_data[key] = value
+                else:
+                    training_data[key] = list(value)
             start_episode = last_episode + 1
     else:
         training_data = {}
@@ -102,7 +105,7 @@ def save_to_check_point(model,training_data,path_dict,model_name,episode):
     # 트레이닝 데이터 저장
     np.savez_compressed(os.path.join(check_point_path,'training_data.npz')
                                     ,average_term = training_data['average_term']
-                                    ,train_total_losses = training_data['train_losses']
+                                    ,train_total_losses = training_data['train_total_losses']
                                     ,train_policy_losses = training_data['train_policy_losses']
                                     ,train_value_losses = training_data['train_value_losses']
                                     ,train_scores = training_data['train_scores'])

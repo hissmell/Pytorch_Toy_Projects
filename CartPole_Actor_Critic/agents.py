@@ -21,36 +21,36 @@ class ActorCriticAgent:
         :param observation: np.ndarray (4,) 형식
         :return: state: 형식 = torch.array (1,4) // dtype = torch.float32
         '''
-        return torch.unsqueeze(torch.from_numpy(observation).dtype(torch.float32),dim=0)
+        return torch.unsqueeze(torch.from_numpy(observation).type(torch.FloatTensor),dim=0)
 
     def get_best_action_from_observation(self,observation):
         with torch.no_grad():
-            state = self._observation_to_state(observation)
+            state = self._observation_to_state(observation).to(self.device)
             policy, _ = self.model(state)
             action = torch.argmax(torch.squeeze(policy))
-        return action
+        return action.to('cpu').numpy()
 
     def get_best_action(self,state):
         with torch.no_grad():
             policy, _ = self.model(state)
             action = torch.argmax(torch.squeeze(policy))
-        return action
+        return action.to('cpu').numpy()
 
 
     def get_action_from_observation(self,observation):
         with torch.no_grad():
-            state = self._observation_to_state(observation)
+            state = self._observation_to_state(observation).to(self.device)
             policy, _ = self.model(state)
             sampler = Categorical(probs=torch.squeeze(policy))
             action = sampler.sample()
-        return action
+        return action.to('cpu').numpy()
 
     def get_action(self,state):
         with torch.no_grad():
             policy, _ = self.model(state)
             sampler = Categorical(probs=torch.squeeze(policy))
             action = sampler.sample()
-        return action
+        return action.to('cpu').numpy()
 
     def fit(self):
         self.optimizer.zero_grad()
@@ -62,24 +62,24 @@ class ActorCriticAgent:
         dones = [replay[3] for replay in self.replay_buffer]
         next_states = [replay[4] for replay in self.replay_buffer]
 
-        states = torch.from_numpy(np.concatenate(states,axis = 0).astype(np.float32)).to(self.device)
-        action_indexes = torch.from_numpy(np.concatenate(action_indexes,axis=0).astype(np.int32)).to(self.device)
-        actions = one_hot(action_indexes,self.action_space_size).dtype(torch.float32)
-        rewards = torch.from_numpy(np.concatenate(rewards,axis=0).astype(np.float32)).to(self.device)
-        dones = torch.from_numpy(np.concatenate(dones,axis=0).astype(np.float32)).to(self.device)
-        next_states = torch.from_numpy(np.concatenate(next_states,axis=0).astype(np.float32)).to(self.device)
+        states = torch.from_numpy(np.stack(states,axis = 0).astype(np.float32)).to(self.device)
+        action_indexes = torch.from_numpy(np.array(action_indexes)).type(torch.LongTensor).to(self.device)
+        actions = one_hot(action_indexes,self.action_space_size).type(torch.FloatTensor).to(self.device)
+        rewards = torch.unsqueeze(torch.from_numpy(np.array(rewards).astype(np.float32)).to(self.device),dim=1)
+        dones = torch.unsqueeze(torch.from_numpy(np.array(dones).astype(np.float32)).to(self.device),dim=1)
+        next_states = torch.from_numpy(np.stack(next_states,axis=0).astype(np.float32)).to(self.device)
 
         # train
         policy,value = self.model(states)
         _,next_value = self.model(next_states)
-        next_value = next_value * (1 - dones)
+        next_value = next_value * (1.0 - dones)
         delta = rewards + self.gamma * next_value - value
         delta_detached = delta.detach()
 
-        value_loss = torch.square(delta)
-        policy_loss = -torch.multiply(torch.log(torch.sum(policy*actions,dim=1)),delta_detached)
+        value_loss = torch.sum(torch.square(delta))
+        policy_loss = torch.sum(-torch.multiply(torch.log(torch.sum(policy*actions,dim=1,keepdim=True)),delta_detached))
         loss = value_loss + policy_loss
-        loss = torch.sum(loss)
+        loss = torch.sum(loss) / data_num
 
         # Backpropagation & Update model
         loss.backward()
@@ -88,9 +88,7 @@ class ActorCriticAgent:
         # Clear the cache in GPU
         torch.cuda.empty_cache()
 
-        return loss.detach().item()/data_num,policy_loss.detach().item()/data_num,value_loss.detach().item()/data_num
-
-
+        return loss.detach().item(),policy_loss.detach().item()/data_num,value_loss.detach().item()/data_num
 
     def append_replay_buffer(self,observation,action_index,reward,done,next_state):
         '''

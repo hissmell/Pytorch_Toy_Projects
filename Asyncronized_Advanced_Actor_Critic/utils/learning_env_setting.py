@@ -47,8 +47,11 @@ def load_from_check_point(path_dict,model,model_name = None,from_check_point = N
         check_point_list = os.listdir(path_dict['exp_path'])
         if check_point_list == []:
             training_data = {}
-            training_data['train_losses'] = []
-            training_data['train_scores'] = []
+            training_data['total_losses'] = []
+            training_data['value_losses'] = []
+            training_data['policy_losses'] = []
+            training_data['scores'] = []
+            training_data['average_term'] = -1
             start_episode = 0
         else:
             episode_list = [int(check_point.split('_')[-1].split('.')[0]) for check_point in check_point_list]
@@ -67,12 +70,18 @@ def load_from_check_point(path_dict,model,model_name = None,from_check_point = N
             training_data_np = np.load(os.path.join(path_dict['exp_path'],'check_point_' + str(last_episode), 'training_data.npz'))
             training_data = {}
             for key,value in training_data_np.items():
-                training_data[key] = list(value)
+                if training_data[key].shape == ():
+                    training_data[key] = value
+                else:
+                    training_data[key] = list(value)
             start_episode = last_episode + 1
     else:
         training_data = {}
-        training_data['train_losses'] = []
-        training_data['train_scores'] = []
+        training_data['total_losses'] = []
+        training_data['value_losses'] = []
+        training_data['policy_losses'] = []
+        training_data['scores'] = []
+        training_data['average_term'] = -1
         start_episode = 0
 
     return model, training_data, start_episode
@@ -94,27 +103,45 @@ def save_to_check_point(model,training_data,path_dict,model_name,episode):
     os.makedirs(check_point_path,exist_ok=True)
 
     # 트레이닝 데이터 저장
-    np.savez_compressed(os.path.join(check_point_path,'training_data.npz'),train_losses = training_data['train_losses']
-                                        ,train_scores = training_data['train_scores'])
+    np.savez_compressed(os.path.join(check_point_path,'training_data.npz')
+                                    ,average_term = training_data['average_term']
+                                    ,total_losses = training_data['total_losses']
+                                    ,policy_losses = training_data['policy_losses']
+                                    ,value_losses = training_data['value_losses']
+                                    ,scores = training_data['scores'])
 
     # 모델 저장
     torch.save(model.state_dict(),os.path.join(check_point_path,model_name+'.pth'))
 
     # 그래프 저장
     fig,axes = plt.subplots(2,1,figsize = (15,12))
-    epoch_range = np.arange(1,1+len(training_data['train_losses']))
-    axes[0].plot(epoch_range,training_data['train_losses'],color = 'blue',linewidth = 2,label = 'Train Loss')
+    epoch_range = np.arange(1,1+len(training_data['total_losses']))
+    axes[0].plot(epoch_range,training_data['total_losses'],color = 'blue',linewidth = 2,label = 'Loss')
     axes[0].set_ylabel('Loss')
     axes[0].grid()
     axes[0].set_title('Loss & Score Graph')
     axes[0].legend(loc = 'upper right')
-    axes[1].plot(epoch_range,training_data['train_scores'],color = 'blue',linewidth = 2,label = 'Train Score')
+    axes[1].plot(epoch_range,training_data['scores'],color = 'blue',linewidth = 2,label = 'Score')
     axes[1].set_ylabel('Score')
     axes[1].grid()
     axes[1].legend(loc = 'lower right')
+    axes[1].set_xlabel(f"Episode (x {training_data['average_term']})")
     fig.savefig(check_point_path + '/training_figure.png')
     plt.close()
 
+    fig,axes = plt.subplots(2,1,figsize = (15,12))
+    axes[0].plot(epoch_range,training_data['policy_losses'],color = 'blue',linewidth = 2,label = 'Policy Loss')
+    axes[0].set_ylabel('Loss')
+    axes[0].grid()
+    axes[0].set_title('Policy Loss & Value Loss Graph')
+    axes[0].legend(loc = 'upper right')
+    axes[1].plot(epoch_range,training_data['value_losses'],color = 'blue',linewidth = 2,label = 'Value Score')
+    axes[1].set_ylabel('Score')
+    axes[1].grid()
+    axes[1].legend(loc = 'upper right')
+    axes[1].set_xlabel(f"Episode (x {training_data['average_term']})")
+    fig.savefig(check_point_path + '/training_figure_detail.png')
+    plt.close()
 
 
 

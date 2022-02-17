@@ -14,12 +14,20 @@ class UnsqueezeObservation(gym.ObservationWrapper):
     def reset(self):
         return self.env.reset().reshape(1,-1)
 
+class RewardScaler(gym.RewardWrapper):
+    def __init__(self,env):
+        super(RewardScaler, self).__init__(env)
+
+    def reward(self, reward):
+        reward = 0.1 if reward >= 1 else -1
+        return reward
+
 def cartpole_env_make(version):
     assert type(version) == str
     env_name = 'CartPole-' + version
 
     env = gym.make(env_name)
-    env = UnsqueezeObservation(env)
+    env = RewardScaler(env)
     return env
 
 

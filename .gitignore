@@ -8,3 +8,5 @@ Pytorch_SL_basic_env
 Pytorch_RL_basic_env
 */data
 */Exp_*
+*/*/save
+*/*/runs

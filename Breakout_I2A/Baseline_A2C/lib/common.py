@@ -122,12 +122,14 @@ class RewardTracker:
     '''
     It used as "with RewardTracker(writer)"
     '''
-    def __init__(self,writer,save_offset = 5.0):
+    def __init__(self,writer,device='cpu',save_offset = 5.0,test_env=None):
         self.writer = writer
         self.stop_reward = STOP_REWARD
         self.moving_avg_width = MOVING_AVG_WIDTH
         self.best_reward_MA = 0.0
         self.save_offset = save_offset
+        self.test_env = test_env
+        self.device = device
 
     def __enter__(self):
         self.ts = time.time()
@@ -139,6 +141,10 @@ class RewardTracker:
         self.writer.close()
 
     def check_score(self,score,frame,epsilon=None,net=None,save_dir=None,RUN_NAME=None):
+        if not self.scores:
+            save_to = os.path.join(save_dir, RUN_NAME + "-init.pth")
+            torch.save(net.state_dict(),save_to)
+
         self.scores.append(score)
         speed = (frame - self.ts_frame) / (time.time() - self.ts)
         self.ts = time.time()
@@ -154,13 +160,35 @@ class RewardTracker:
         self.writer.add_scalar('speed', speed, frame)
         self.writer.add_scalar('score', score, frame)
 
+
+
         if moving_avg > self.best_reward_MA + self.save_offset:
-            save_to = os.path.join(save_dir, RUN_NAME + f"-frame={frame}-score={moving_avg:.6f}-pth")
+            self.best_reward_MA = moving_avg
+            test_scores = []
+            for _ in range(10):
+                obs = self.test_env.reset()
+                test_score = 0.0
+                while True:
+                    obs_var = torch.tensor(np.array([obs], copy=False)).to(self.device)
+                    action_logits_var = net(obs_var)[0]
+                    action_prob = F.softmax(action_logits_var, dim=1).squeeze().data.to('cpu').numpy()
+                    action = np.random.choice(self.test_env.action_space.n, p=action_prob)
+                    next_obs,reward,done,_ = self.test_env.step(action)
+                    test_score += reward
+                    if done:
+                        test_scores.append(test_score)
+                        test_score = 0.0
+                        break
+                    obs = next_obs
+
+            test_result = np.mean(test_scores)
+
+            save_to = os.path.join(save_dir, RUN_NAME + f"-frame={frame}-score={moving_avg:.6f}-test={test_result:.2f}.pth")
             torch.save(net.state_dict(),save_to)
 
         if moving_avg > self.stop_reward:
             print(colored(f"Solved in {len(self.scores)} Games!"), 'yellow')
-            save_to = os.path.join(save_dir, RUN_NAME + f"-frame={frame}-solved-pth")
+            save_to = os.path.join(save_dir, RUN_NAME + f"-frame={frame}-solved.pth")
             torch.save(net.state_dict(), save_to)
             return True
         return False

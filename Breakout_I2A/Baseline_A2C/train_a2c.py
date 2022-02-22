@@ -8,16 +8,18 @@ from tensorboardX import SummaryWriter
 import os
 
 ''' SETTING '''
-RUN_NAME = 'Exp_01'
+RUN_NAME = 'Exp_02'
 LEARNING_RATE = 1e-4
 SAVE_OFFSET = 5.0
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+#DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = 'cpu'
 
 ''' MAIN '''
 if __name__ == '__main__':
     save_dir = common.set_save_path(RUN_NAME)
 
     envs = common.make_env()
+    test_env = common.make_env(test=True)[0]
     writer = SummaryWriter(comment=f'-lr={LEARNING_RATE:8.6f}')
 
     net = models.A2C(envs[0].observation_space.shape,envs[0].action_space.n).to(DEVICE)
@@ -29,7 +31,7 @@ if __name__ == '__main__':
     optimizer = optim.Adam(net.parameters(),lr=LEARNING_RATE,eps=1e-4)
 
     buffer = []
-    with common.RewardTracker(writer,SAVE_OFFSET) as reward_tracker:
+    with common.RewardTracker(writer,SAVE_OFFSET,test_env) as reward_tracker:
         with ptan.common.utils.TBMeanTracker(writer,batch_size=100) as tb_tracker:
             for frame, exp in enumerate(exp_source):
                 buffer.append(exp)

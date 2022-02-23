@@ -12,7 +12,7 @@ FPS = 25
 
 if __name__ == '__main__':
     env = common.make_env(test=True)[0]
-    model_path = 'C:\\Users\\82102\\PycharmProjects\\ReinforcementLearning\\Toy_project\\Breakout_I2A\\Baseline_A2C\\save\\Exp_02\\Exp_02-frame=9464953-score=10.060000.pth'
+    model_path = 'C:\\Users\\82102\\PycharmProjects\\ReinforcementLearning\\Toy_project\\Breakout_I2A\\Baseline_A2C\\save\\Exp_02\\Exp_02-frame=9197101-score=20.450000-test=319.00.pth'
     net = models.A2C(env.observation_space.shape,env.action_space.n)
     net.load_state_dict(torch.load(model_path,map_location=torch.device('cpu')))
 

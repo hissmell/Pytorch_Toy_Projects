@@ -7,6 +7,9 @@ Optimize_Julia_Serial
 Pytorch_SL_basic_env
 Pytorch_RL_basic_env
 */data
-*/Exp_*
+*/*/Exp_*
 */*/save
 */*/runs
+atari-py
+atari-py/*
+

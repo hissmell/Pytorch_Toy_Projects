@@ -23,7 +23,7 @@ if __name__ == '__main__':
     writer = SummaryWriter(comment=f'-lr={LEARNING_RATE:8.6f}')
 
     net = models.A2C(envs[0].observation_space.shape,envs[0].action_space.n).to(DEVICE)
-    net.load_state_dict(torch.load('C:\\Users\\82102\\PycharmProjects\\ReinforcementLearning\\Toy_project\\Breakout_I2A\\Baseline_A2C\\save\\Exp_02\\Exp_02-frame=9464953-score=10.060000.pth'))
+    net.load_state_dict(torch.load('C:\\Users\\82102\\PycharmProjects\\ToyProject01\\Pytorch_Toy_Projects\\Breakout_I2A\\Baseline_A2C\\save\\Exp_02\\Exp_02-frame=9197101-score=20.450000-test=319.00.pth'))
     net.to(DEVICE)
     print(net)
 

@@ -13,13 +13,14 @@ from termcolor import colored
 ENV_NAME = "BreakoutNoFrameskip-v4"
 STACK_FRAMES = 2 # 2로 고정합니다 이거 바꾸면 baseline network도 바꿔서 다시해야합니다...
 REWARD_STEPS = 1 # 반드시 1이어야 합니다.
-NUM_ENVS = 50
+NUM_ENVS = 16
 GAMMA = 0.99
 CLIP_GRAD = 0.5
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 OBSERVATION_WEIGHT = 10.0
 REWARD_WEIGHT = 1.0
 IMAGE_SHAPE = (84,84)
+
 ''' FUNCTIONS '''
 
 def set_save_path(RUN_NAME):
@@ -40,6 +41,7 @@ def make_env(test=False, clip=True):
         args = {'reward_clipping': clip}
     return [ptan.common.wrappers.wrap_dqn(gym.make(ENV_NAME),stack_frames=STACK_FRAMES,**args) for _ in range(NUM_ENVS)]
 
+MAKE_INITIAL_OBS_ENV = make_env()[0]
 def unpack_batch(batch,device):
     '''
     This function works to make batch to trainable-state
@@ -60,14 +62,17 @@ def unpack_batch(batch,device):
         if exp.last_state is not None:
             not_done_idx.append(idx)
             last_states.append(np.array(exp.last_state,copy=False))
+        else:
+            last_states.append(np.array(MAKE_INITIAL_OBS_ENV.reset(), copy=False))
 
     states_np = np.array(states,copy=False)
     next_states_np = np.array(last_states,copy=False)
 
     states_var = torch.tensor(states_np,dtype=torch.float32).to(device)
-    states_diff_var = torch.tensor(states_np[:,-1,:,:] - next_states_np[:,-1,:,:],dtype=torch.float32).to(device) # shape = (N,84,84)
+    states_diff_var = torch.tensor(next_states_np[:,-1,:,:] - states_np[:,-1,:,:],dtype=torch.float32).to(device) # shape = (N,84,84)
     actions_var = torch.tensor(actions,dtype=torch.int64).to(device)
     rewards_var = torch.tensor(rewards,dtype=torch.float32).to(device)
+
     return states_var,states_diff_var,actions_var,rewards_var
 
 def train(net_em,optimizer,batch,tb_tracker,frame,device):
@@ -79,8 +84,6 @@ def train(net_em,optimizer,batch,tb_tracker,frame,device):
     predict_next_states_diff = predict_next_states_diff.squeeze(1)
     predict_rewards = predict_rewards.squeeze(-1)
 
-    assert predict_next_states_diff.size()[1:] == (84,84)
-    assert rewards_var.size() == predict_rewards.size()
     loss_observation = F.mse_loss(states_diff_var,predict_next_states_diff)
     loss_reward = F.mse_loss(rewards_var,predict_rewards)
 
@@ -88,7 +91,8 @@ def train(net_em,optimizer,batch,tb_tracker,frame,device):
 
     loss_total.backward()
     nn.utils.clip_grad_norm_(net_em.parameters(),max_norm=CLIP_GRAD)
-    grads = np.concatenate([p.grad.data.to('cpu').flatten() for p in net_em.parameters if p.grad is not None])
+    grads = np.concatenate([p.grad.data.to('cpu').flatten() for p in net_em.parameters() if p.grad is not None])
+    optimizer.step()
 
     ''' Record Training Data '''
     tb_tracker.track('loss_observation', loss_observation.detach().to('cpu'), frame)
@@ -97,3 +101,7 @@ def train(net_em,optimizer,batch,tb_tracker,frame,device):
     tb_tracker.track('grad_l2', np.sqrt(np.mean(np.square(grads))), frame)
     tb_tracker.track('grad_max', np.max(np.abs(grads)), frame)
     tb_tracker.track('grad_var', np.var(grads), frame)
+
+    return float(loss_total.detach().to('cpu').data.numpy())\
+        ,float(loss_observation.detach().to('cpu').data.numpy())\
+        ,float(loss_reward.detach().to('cpu').data.numpy())

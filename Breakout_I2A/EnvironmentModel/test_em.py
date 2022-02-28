@@ -140,7 +140,7 @@ def imagination(net_em,env,current_obs_np,device='cuda'):
 
 
 if __name__ == '__main__':
-    device = 'cuda'
+    device = 'cpu'
     env = common.make_env(test=False)[0]
     act_model_path = 'C:\\Users\\82102\\PycharmProjects\\ToyProject01\\Pytorch_Toy_Projects\\Breakout_I2A' \
                      '\\Baseline_A2C\\save\\Exp_02\\Exp_02-frame=1906389-score=25.310000-test=337.20.pth'
@@ -148,16 +148,17 @@ if __name__ == '__main__':
                     'EnvironmentModel\\save\\Exp_05_Ver3_100_1\\frame=5567423_loss=0.033674.pth'
     net_act = models.A2C(env.observation_space.shape,env.action_space.n).to(device)
     net_em = models.EnvironmentModelVer3(env.observation_space.shape, env.action_space.n).to(device)
-    net_act.load_state_dict(torch.load(act_model_path))
-    net_em.load_state_dict(torch.load(em_model_path))
+    net_act.load_state_dict(torch.load(act_model_path,map_location=torch.device(device)))
+    net_em.load_state_dict(torch.load(em_model_path,map_location=torch.device(device)))
 
     prev_obs = env.reset()
     for _ in range(100):
         action_logit_var = net_act(torch.tensor(np.array([prev_obs]),dtype=torch.float32).to(device))[0]
         action_prob_np = F.softmax(action_logit_var,dim=1).squeeze(dim=0).to('cpu').data.numpy()
         action = np.random.choice(env.action_space.n,p=action_prob_np)
-        obs,_,reward,_ = env.step(action)
+        obs,reward,_,_ = env.step(action)
         if reward == 1:
+            print('!')
             break
         prev_obs = obs
 

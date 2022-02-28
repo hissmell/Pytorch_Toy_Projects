@@ -15,9 +15,8 @@ STACK_FRAMES = 2 # 2로 고정합니다 이거 바꾸면 baseline network도 바
 REWARD_STEPS = 1 # 반드시 1이어야 합니다.
 NUM_ENVS = 16
 GAMMA = 0.99
-CLIP_GRAD = 0.5
 BATCH_SIZE = 64
-OBSERVATION_WEIGHT = 10.0
+OBSERVATION_WEIGHT = 100.0
 REWARD_WEIGHT = 1.0
 IMAGE_SHAPE = (84,84)
 
@@ -41,7 +40,6 @@ def make_env(test=False, clip=True):
         args = {'reward_clipping': clip}
     return [ptan.common.wrappers.wrap_dqn(gym.make(ENV_NAME),stack_frames=STACK_FRAMES,**args) for _ in range(NUM_ENVS)]
 
-MAKE_INITIAL_OBS_ENV = make_env()[0]
 def unpack_batch(batch,device):
     '''
     This function works to make batch to trainable-state
@@ -63,7 +61,7 @@ def unpack_batch(batch,device):
             not_done_idx.append(idx)
             last_states.append(np.array(exp.last_state,copy=False))
         else:
-            last_states.append(np.array(MAKE_INITIAL_OBS_ENV.reset(), copy=False))
+            last_states.append(np.array(exp.state, copy=False))
 
     states_np = np.array(states,copy=False)
     next_states_np = np.array(last_states,copy=False)
@@ -90,7 +88,6 @@ def train(net_em,optimizer,batch,tb_tracker,frame,device):
     loss_total = loss_observation * OBSERVATION_WEIGHT + loss_reward * REWARD_WEIGHT
 
     loss_total.backward()
-    nn.utils.clip_grad_norm_(net_em.parameters(),max_norm=CLIP_GRAD)
     grads = np.concatenate([p.grad.data.to('cpu').flatten() for p in net_em.parameters() if p.grad is not None])
     optimizer.step()
 

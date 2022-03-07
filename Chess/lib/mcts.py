@@ -1,21 +1,34 @@
 import math
+import collections
+import copy
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import models
+from lib import game
 class MCTS:
     def __init__(self,c_punc=1.0,env=None):
         assert env is not None
         self.action_size = env.action_space.n
-        self.env = env
+        self.env = copy.deepcopy(env)
+        self.root_board_np = env.reset()
+        self.root_board_b = self.root_board_np.tobytes()
+        self.root_board_str = self.env.render(mode='unicode')
         self.c_punc = c_punc
 
+
+        self.all_action_list = [act for act in range(self.action_size)]
+        # N[s] -> [action count list]
         self.visit_count = {}
+        # total value
         self.value = {}
+        # Q[s] -> [value avg list], computed by N[s,a] / self.value[s,a]
         self.values_avg = {}
+        # P[s] -> [probability list]
         self.probs = {}
+        # waiting dict : Used to boost search efficiency
+        self.waiting = collections.defaultdict(list)
 
     def clear(self):
         self.visit_count.clear()
@@ -34,15 +47,16 @@ class MCTS:
         (5) actions : list of actions (int 64) taken
         :return:
         '''
-        state_b = state_np.to_bytes()
+        state_b = state_np.tobytes()
         states_b = []
         actions = []
         cur_state_np = state_np
         cur_player = player
         value = None
+        env_copy = copy.deepcopy(self.env)
 
         while not self.is_leaf(cur_state_np):
-            cur_state_b = cur_state_np.to_bytes()
+            cur_state_b = cur_state_np.tobytes()
             states_b.append(cur_state_b)
             counts = self.visit_count[cur_state_b]
             total_sqrt = math.sqrt(sum(counts))
@@ -53,16 +67,23 @@ class MCTS:
                 noises = np.random.dirichlet([0.03] * self.action_size)
                 probs = [0.75 * prob + 0.25 * noise for prob,noise in zip(probs,noises)]
 
-            score = [value + self.c_punc * prob * total_sqrt / (1 + count)
-                     for value,prob,count in zip(values_avg,probs,counts)]
+            score = [q_value + self.c_punc * prob * total_sqrt / (1 + count)
+                     for q_value,prob,count in zip(values_avg,probs,counts)]
+
+            illegal_actions = set(self.all_action_list) - set(env_copy.legal_actions)
+            for illegal_action in illegal_actions:
+                score[illegal_action] = -np.inf
+
+            for waited_action in self.waiting[cur_state_b]:
+                score[waited_action] = -1000
 
             action = int(np.argmax(score))
             actions.append(action)
 
-            cur_state_np, reward, done, info = self.env.step()
+            cur_state_np, reward, done, info = env_copy.step(action)
             cur_player = 1 - cur_player
             if done:
-                if cur_player == 1:
+                if cur_player == game.WHITE:
                     value = reward
                 else:
                     value = -reward
@@ -70,11 +91,11 @@ class MCTS:
         return value, cur_state_np, cur_player, states_b, actions
 
     def is_leaf(self,state_np):
-        return state_np.to_bytes() not in self.probs
+        return state_np.tobytes() not in self.probs
 
     def search_batch(self,count,batch_size,state_np,player,net,device='cpu'):
-        for _ in range(count):
-            self.search_minibatch(batch_size,state_np,player,net,device='cpu')
+        for i in range(count):
+            self.search_minibatch(batch_size,state_np,player,net,device=device)
 
     def search_minibatch(self,count,state_np,player,net,device='cpu'):
         backup_queue = []
@@ -82,13 +103,16 @@ class MCTS:
         expand_players = []
         expand_queue = []
         planned_b = set()
-        for _ in range(count):
+
+        for i in range(count):
             value, leaf_state_np, leaf_player, states_b, actions = self.find_leaf(state_np,player)
-            leaf_state_b = leaf_state_np.to_bytes()
+            leaf_state_b = leaf_state_np.tobytes()
             if value is not None:
                 backup_queue.append((value,states_b,actions))
             else:
                 if leaf_state_b not in planned_b:
+                    if actions:
+                        self.waiting[states_b[-1]].append(actions[-1])
                     planned_b.add(leaf_state_b)
                     expand_states_np.append(leaf_state_np)
                     expand_players.append(leaf_player)
@@ -96,7 +120,9 @@ class MCTS:
 
 
         if expand_queue:
-            batch_var = models.states_np_list_to_batch(expand_states_np,expand_players,device)
+            self.waiting.clear()
+            batch_var = game.states_np_list_to_batch(expand_states_np,expand_players,device)
+
             logits_var, values_var = net(batch_var)
             probs_var = F.softmax(logits_var,dim=1)
             values_np = values_var.data.to('cpu').numpy()[:,0]
@@ -130,7 +156,7 @@ class MCTS:
         :param tau:
         :return: (probs,values)
         '''
-        state_b = state_np.to_bytes()
+        state_b = state_np.tobytes()
         counts = self.visit_count[state_b]
         if tau == 0:
             probs = [0.0] * self.action_size
@@ -141,6 +167,12 @@ class MCTS:
 
         values = self.values_avg[state_b]
         return probs,values
+
+    def update_root_node(self,env,state_np):
+        self.env = copy.deepcopy(env)
+        self.root_board_np = state_np
+        self.root_board_b = self.root_board_np.tobytes()
+        self.root_board_str = self.env.render(mode='unicode')
 
 
 

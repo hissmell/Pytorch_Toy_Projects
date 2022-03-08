@@ -19,22 +19,22 @@ class MCTS:
 
 
         self.all_action_list = [act for act in range(self.action_size)]
-        # N[s] -> [action count list]
-        self.visit_count = {}
-        # total value
-        self.value = {}
-        # Q[s] -> [value avg list], computed by N[s,a] / self.value[s,a]
-        self.values_avg = {}
-        # P[s] -> [probability list]
-        self.probs = {}
+        # 이중 dictionary, {state_b : {legal_action : [visit_count, total_value, q_value, prob]}}
+        self.nodes = {{}}
+        # key = state_b, value = legal_action list
+        self.possible_actions = {}
+        self.possible_actions[self.root_board_b] = self.env.legal_actions
         # waiting dict : Used to boost search efficiency
         self.waiting = collections.defaultdict(list)
 
     def clear(self):
-        self.visit_count.clear()
-        self.value.clear()
-        self.values_avg.clear()
-        self.probs.clear()
+        self.nodes = {{}}
+        self.root_board_np = self.env.reset()
+        self.root_board_b = self.root_board_np.tobytes()
+        self.root_board_str = self.env.render(mode='unicode')
+        self.possible_actions = {}
+        self.possible_actions[self.root_board_b] = self.env.legal_actions
+        self.waiting = collections.defaultdict(list)
 
     def find_leaf(self, state_np, player):
         '''
@@ -58,6 +58,7 @@ class MCTS:
         while not self.is_leaf(cur_state_np):
             cur_state_b = cur_state_np.tobytes()
             states_b.append(cur_state_b)
+            ####### 여기서 부터 시작해야 함 ##########
             counts = self.visit_count[cur_state_b]
             total_sqrt = math.sqrt(sum(counts))
             probs = self.probs[cur_state_b]
@@ -173,6 +174,7 @@ class MCTS:
         self.root_board_np = state_np
         self.root_board_b = self.root_board_np.tobytes()
         self.root_board_str = self.env.render(mode='unicode')
+        self.possible_actions[self.root_board_b] = self.env.legal_actions
 
 
 

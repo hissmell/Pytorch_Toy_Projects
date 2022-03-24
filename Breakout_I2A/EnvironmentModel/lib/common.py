@@ -13,10 +13,10 @@ from termcolor import colored
 ENV_NAME = "BreakoutNoFrameskip-v4"
 STACK_FRAMES = 2 # 2로 고정합니다 이거 바꾸면 baseline network도 바꿔서 다시해야합니다...
 REWARD_STEPS = 1 # 반드시 1이어야 합니다.
-NUM_ENVS = 16
+NUM_ENVS = 50
 GAMMA = 0.99
-BATCH_SIZE = 64
-OBSERVATION_WEIGHT = 100.0
+BATCH_SIZE = 128
+OBSERVATION_WEIGHT = 10.0
 REWARD_WEIGHT = 1.0
 IMAGE_SHAPE = (84,84)
 
@@ -40,6 +40,8 @@ def make_env(test=False, clip=True):
         args = {'reward_clipping': clip}
     return [ptan.common.wrappers.wrap_dqn(gym.make(ENV_NAME),stack_frames=STACK_FRAMES,**args) for _ in range(NUM_ENVS)]
 
+INITIAL_ENV = make_env(test=False,clip=True)[0]
+
 def unpack_batch(batch,device):
     '''
     This function works to make batch to trainable-state
@@ -50,7 +52,6 @@ def unpack_batch(batch,device):
     states = []
     actions = []
     rewards = []
-    not_done_idx = []
     last_states = []
 
     for idx,exp in enumerate(batch):
@@ -58,18 +59,19 @@ def unpack_batch(batch,device):
         actions.append(exp.action)
         rewards.append(exp.reward)
         if exp.last_state is not None:
-            not_done_idx.append(idx)
             last_states.append(np.array(exp.last_state,copy=False))
         else:
-            last_states.append(np.array(exp.state, copy=False))
+            last_states.append(np.array(INITIAL_ENV.reset(), copy=False))
 
     states_np = np.array(states,copy=False)
     next_states_np = np.array(last_states,copy=False)
+    actions_np = np.array(actions,copy=False)
+    rewards_np = np.array(rewards,copy=False)
 
     states_var = torch.tensor(states_np,dtype=torch.float32).to(device)
     states_diff_var = torch.tensor(next_states_np[:,-1,:,:] - states_np[:,-1,:,:],dtype=torch.float32).to(device) # shape = (N,84,84)
-    actions_var = torch.tensor(actions,dtype=torch.int64).to(device)
-    rewards_var = torch.tensor(rewards,dtype=torch.float32).to(device)
+    actions_var = torch.tensor(actions_np,dtype=torch.int64).to(device)
+    rewards_var = torch.tensor(rewards_np,dtype=torch.float32).to(device)
 
     return states_var,states_diff_var,actions_var,rewards_var
 

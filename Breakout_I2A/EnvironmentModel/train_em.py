@@ -13,9 +13,9 @@ from collections import deque
 
 ''' Hyperparameters '''
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-RUN_NAME = 'Exp_05_Ver3_100_1'
-LEARNING_RATE = 5e-4
-SAVE_OFFSET = 0.05
+RUN_NAME = 'Exp_11_Ver6_10_1'
+LEARNING_RATE = 1e-3
+SAVE_OFFSET = 0.04
 MOVING_AVG_WIDTH = 1000
 
 ''' MAIN '''
@@ -29,9 +29,9 @@ if __name__ == '__main__':
     net_act = models.A2C(envs[0].observation_space.shape,envs[0].action_space.n)
     net_act.load_state_dict(torch.load('C:\\Users\\82102\\PycharmProjects\\ToyProject01\\Pytorch_Toy_Projects'
                                        '\\Breakout_I2A\\Baseline_A2C\\save\\Exp_02'
-                                       '\\Exp_02-frame=61969-score=15.141304-test=383.70.pth'))
+                                       '\\Exp_02-frame=61969-score=15.141304-test=383.70.pth',map_location='cpu'))
     net_act.to(DEVICE)
-    net_em = models.EnvironmentModelVer3(envs[0].observation_space.shape, envs[0].action_space.n).to(DEVICE)
+    net_em = models.EnvironmentModelVer6(envs[0].observation_space.shape, envs[0].action_space.n).to(DEVICE)
     start_frame = 0
     optimizer = optim.Adam(net_em.parameters(),lr=LEARNING_RATE)
 
@@ -74,5 +74,7 @@ if __name__ == '__main__':
                     continue
                 best_loss = np.mean(loss_queue)
                 print(f"Saved! Total loss : {best_loss:.6f} | Loss obs : {np.mean(obs_loss_queue):.6f} | Loss reward : {np.mean(reward_loss_queue):.6f}")
-                save_path = os.path.join(save_dir_path,f"frame={frame}_loss={best_loss:.6f}.pth")
+                save_path = os.path.join(save_dir_path,f"frame={frame}_loss={best_loss:.6f}_"
+                                                       f"obs_loss{np.mean(obs_loss_queue):.6f}_"
+                                                       f"rew_loss={np.mean(reward_loss_queue):.6f}.pth")
                 torch.save(net_em.state_dict(), save_path)

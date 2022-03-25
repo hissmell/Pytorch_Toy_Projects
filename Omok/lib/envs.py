@@ -231,7 +231,7 @@ class Omok(gym.Env):
 
 if __name__ == '__main__':
     import random
-    env = Omok()
+    env = Omok(board_size=13)
     obs = env.reset()
     for _ in range(200):
         print(env.render())
@@ -244,11 +244,10 @@ if __name__ == '__main__':
             print(env.render())
             break
 
-
     import time
     start = time.time()
-    steps = 250
-    times = 4
+    steps = 100
+    times = 10
     for _ in range(times):
         env.reset()
         for _ in range(steps):

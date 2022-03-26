@@ -181,7 +181,7 @@ class Omok(gym.Env):
                 row_string = row_string + ' ' + board[row][col] + ' '
             print(row_string)
 
-    def render(self):
+    def render(self,mode='unicode'):
         cur_observation = self.current_state_to_observation()
 
         turn = 'O' if cur_observation[0][0][0] == -1 else 'X'

@@ -51,7 +51,10 @@ class Net(nn.Module):
 
         self.feature_extruder = nn.Sequential(
             nn.Conv2d(2,64,kernel_size=(1,5),stride=(1,1),padding=(0,2)),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
             nn.Conv2d(64,64,kernel_size=(5,1),stride=(1,1),padding=(2,0)),
+            nn.BatchNorm2d(64),
             nn.ReLU()
         )
         self.conv_res_blocks = nn.Sequential(
@@ -75,11 +78,8 @@ class Net(nn.Module):
 
     def get_conv_out(self,state_size):
         temp = torch.zeros(1,*state_size,dtype=torch.float32)
-        print(temp.size())
         temp = self.feature_extruder(temp)
-        print(temp.size())
         temp = self.conv_res_blocks(temp)
-        print(temp.size())
         return int(np.prod(temp.size()))
 
     def forward(self,x):

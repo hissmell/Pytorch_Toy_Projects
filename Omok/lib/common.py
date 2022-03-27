@@ -1,11 +1,12 @@
 import torch
 import numpy as np
 import mcts
-
+import envs
+from termcolor import colored
 
 def play_game(env,mcts_stores,replay_buffer,net1,net2
               ,steps_before_tau_0,mcts_searches,mcts_batch_size
-              ,net1_plays_first=False,device='cpu'):
+              ,net1_plays_first=False,device='cpu',render=False):
     """
     Play one single game, memorizing transitions into the replay buffer
     :param mcts_stores: could be None or single MCTS or two MCTSes for individual net
@@ -21,7 +22,7 @@ def play_game(env,mcts_stores,replay_buffer,net1,net2
         mcts_stores = [mcts_stores,mcts_stores]
 
     state = env.reset()
-    nets = [net1,net2]
+    nets = [net1.to(device),net2.to(device)]
 
     if not net1_plays_first:
         cur_player = np.random.choice(2)
@@ -29,28 +30,57 @@ def play_game(env,mcts_stores,replay_buffer,net1,net2
         cur_player = 0
     if cur_player == 0:
         net1_color = -1
-        net2_color = 1
     else:
         net1_color = 1
-        net2_color = -1
 
     step = 0
-    tau = 0.1 if steps_before_tau_0 >= step else 1
+    tau = 0.08 if steps_before_tau_0 >= step else 1
     game_history = []
 
     result = None
     net1_result = None
     turn = -1 # (-1) represents Black turn! (1 does White turn)
     while result is None:
+        if render:
+            print(env.render())
+
+        mcts_stores[cur_player].update_root_node(env,state,nets[cur_player],device=device)
         mcts_stores[cur_player].search_batch(mcts_searches,mcts_batch_size
                                              ,state,turn,nets[cur_player]
                                              ,device=device)
         probs,_ = mcts_stores[cur_player].get_policy_value(state,tau=tau)
         game_history.append((state,cur_player,probs))
-        action = np.random.choice(mcts_stores[0].all_action_list,p=probs)
+        action = int(np.random.choice(mcts_stores[0].all_action_list, p=probs))
 
-        next_state,reward,done,_ = env.step(action)
+        if render:
+            if turn == -1:
+                if net1_color == -1:
+                    print(colored(f"Turn : Net 1 (O turn) Nodes {len(mcts_stores[cur_player].probs):}",'blue'))
+                else:
+                    print(colored(f"Turn : Net 2 (O turn) Nodes {len(mcts_stores[cur_player].probs):}", 'blue'))
+            else:
+                if net1_color == -1:
+                    print(colored(f"Turn : Net 2 (X turn) Nodes {len(mcts_stores[cur_player].probs):}",'blue'))
+                else:
+                    print(colored(f"Turn : Net 1 (X turn) Nodes {len(mcts_stores[cur_player].probs):}", 'blue'))
+            N_dict, Q_dict = mcts_stores[cur_player].get_root_child_statistics()
+            top = min(3, len(env.legal_actions))
+            N_list = sorted(list(N_dict.keys()), key=lambda x: N_dict[x], reverse=True)
+            for i in range(1, top + 1):
+                print(colored(
+                    f'Top {i} Action : ({N_list[i - 1][0]:d},{N_list[i - 1][1]:d})'
+                    f' Visit : {N_dict[N_list[i - 1]]} Q_value : {Q_dict[N_list[i - 1]]:.3f}'
+                    f' Prob : {probs[env.encode_action(N_list[i - 1])]*100:.2f} %','cyan'))
+            move = env.decode_action(action)
+            print(colored(f"Action taken : ({move[0]:d},{move[1]:d})"
+                          f" Visit : {N_dict[move]} Q_value : {Q_dict[move]:.3f}"
+                          f" Prob : {probs[env.encode_action(move)]*100:.2f} %",'red'))
+
+
+        state,reward,done,_ = env.step(action)
         if done:
+            if render:
+                print(env.render())
             result = reward
             if net1_color == -1:
                 net1_result = reward
@@ -62,7 +92,7 @@ def play_game(env,mcts_stores,replay_buffer,net1,net2
 
         step += 1
         if step >= steps_before_tau_0:
-            tau = 0.1
+            tau = 0.08
 
     if replay_buffer is not None:
         for state, cur_player, probs in reversed(game_history):
@@ -72,3 +102,29 @@ def play_game(env,mcts_stores,replay_buffer,net1,net2
             result = -result
 
     return net1_result, step
+
+def evaluate_network(env,net1,net2,rounds,device='cpu',render=False):
+    net1_score,net2_score = 0,0
+    mcts_stores = [mcts.MCTS(env),mcts.MCTS(env)]
+    for round in range(rounds):
+        result,_ = play_game(env,mcts_stores,None,net1,net2,0,160,8,False,device,render)
+        net1_score += result / 2
+        net2_score -= result / 2
+
+    return net1_score - net2_score
+
+if __name__ == '__main__':
+    from models import Net
+    from mcts import MCTS
+    from envs import Omok
+    env = Omok(board_size=9)
+    mcts_stores = [MCTS(env),MCTS(env)]
+    net1 = Net(env.observation_space.shape,env.action_space.n)
+    net2 = Net(env.observation_space.shape,env.action_space.n)
+    # device = 'cuda'
+    # render = True
+    # net1_result,step = play_game(env,mcts_stores,None,net1,net2,0,mcts_searches=200,mcts_batch_size=8,
+    #                             net1_plays_first=False,device=device,render=render)
+    #
+    # print(net1_result,step)
+    print(evaluate_network(env,net1,net2,1,'cuda',True))

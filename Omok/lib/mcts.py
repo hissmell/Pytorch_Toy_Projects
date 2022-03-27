@@ -108,10 +108,10 @@ class MCTS:
         for i in range(count):
             value, leaf_state_np, leaf_player, states_b, actions = self.find_leaf(state_np,player)
             leaf_state_b = leaf_state_np.tobytes()
-            self.waiting[states_b[-1]].append(actions[-1])
             if value is not None:
                 backup_queue.append((value,states_b,actions))
             else:
+                self.waiting[states_b[-1]].append(actions[-1])
                 expand_states_np.append(leaf_state_np)
                 expand_players.append(leaf_player)
                 expand_queue.append((leaf_state_b,states_b,actions))
@@ -180,14 +180,14 @@ class MCTS:
         return N_dict,Q_dict
 
 
-    def update_root_node(self,env,state_np,net=None):
+    def update_root_node(self,env,state_np,net=None,device='cpu'):
         self.env = copy.deepcopy(env)
         self.root_board_np = state_np
         self.root_board_b = self.root_board_np.tobytes()
         self.root_board_str = self.env.render(mode='unicode')
         if self.is_leaf(self.root_board_np):
             if net is not None:
-                batch_var = torch.tensor([state_np],torch.float32).to('cpu')
+                batch_var = torch.tensor(np.array([state_np]),dtype=torch.float32).to(device)
                 logits_var,values_var = net(batch_var)
                 probs_var = F.softmax(logits_var, dim=1)
                 values_np = values_var.data.to('cpu').numpy()[:, 0]

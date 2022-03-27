@@ -32,11 +32,15 @@ class MCTS:
         # wating -> key = state_b, value = waiting actions(list)
         self.waiting = defaultdict(list)
 
+    def __len__(self):
+        return len(self.probs)
+
     def clear(self):
         self.visit_count.clear()
         self.value.clear()
         self.values_avg.clear()
         self.probs.clear()
+        self.env.reset()
 
     def find_leaf(self, state_np, player):
         '''

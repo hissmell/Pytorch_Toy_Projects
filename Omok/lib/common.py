@@ -1,7 +1,7 @@
 import torch
 import numpy as np
-import mcts
-import envs
+from lib import mcts
+from lib import envs
 from termcolor import colored
 
 def play_game(env,mcts_stores,replay_buffer,net1,net2
@@ -111,20 +111,19 @@ def evaluate_network(env,net1,net2,rounds,device='cpu',render=False):
         net1_score += result / 2
         net2_score -= result / 2
 
-    return net1_score - net2_score
+    return (net1_score - net2_score) / rounds
 
 if __name__ == '__main__':
     from models import Net
     from mcts import MCTS
     from envs import Omok
     env = Omok(board_size=9)
-    mcts_stores = [MCTS(env),MCTS(env)]
+    mcts_stores = MCTS(env)
     net1 = Net(env.observation_space.shape,env.action_space.n)
     net2 = Net(env.observation_space.shape,env.action_space.n)
-    # device = 'cuda'
-    # render = True
-    # net1_result,step = play_game(env,mcts_stores,None,net1,net2,0,mcts_searches=200,mcts_batch_size=8,
-    #                             net1_plays_first=False,device=device,render=render)
-    #
-    # print(net1_result,step)
-    print(evaluate_network(env,net1,net2,1,'cuda',True))
+    device = 'cuda'
+    render = True
+    net1_result,step = play_game(env,mcts_stores,None,net1,net2,0,mcts_searches=100,mcts_batch_size=10,
+                                net1_plays_first=False,device=device,render=render)
+
+    print(net1_result,step)

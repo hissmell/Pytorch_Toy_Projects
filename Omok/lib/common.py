@@ -6,7 +6,8 @@ from termcolor import colored
 
 def play_game(env,mcts_stores,replay_buffer,net1,net2
               ,steps_before_tau_0,mcts_searches,mcts_batch_size
-              ,net1_plays_first=False,device='cpu',render=False):
+              ,net1_plays_first=False,device='cpu',render=False
+              ,return_history=False):
     """
     Play one single game, memorizing transitions into the replay buffer
     :param mcts_stores: could be None or single MCTS or two MCTSes for individual net
@@ -94,24 +95,27 @@ def play_game(env,mcts_stores,replay_buffer,net1,net2
         if step >= steps_before_tau_0:
             tau = 0.08
 
-    if replay_buffer is not None:
+    if replay_buffer is not None or return_history:
+        if return_history:
+            h = []
         for state, cur_player, probs in reversed(game_history):
-            replay_buffer.append(
-                (state, cur_player, probs, result)
-            )
+            if replay_buffer is not None:
+                replay_buffer.append((state, cur_player, probs, result))
+            if return_history:
+                h.append((state, cur_player, probs, result))
+
             result = -result
 
-    return net1_result, step
+    return net1_result, step, return_history
 
-def evaluate_network(env,net1,net2,rounds,device='cpu',render=False):
-    net1_score,net2_score = 0,0
+def evaluate_network(env,net1,net2,rounds,search_num=200,batch_size=10,device='cpu',render=False):
+    net1_score = 0
     mcts_stores = [mcts.MCTS(env),mcts.MCTS(env)]
     for round in range(rounds):
-        result,_ = play_game(env,mcts_stores,None,net1,net2,0,160,8,False,device,render)
-        net1_score += result / 2
-        net2_score -= result / 2
+        result,_ = play_game(env,mcts_stores,None,net1,net2,0,search_num,batch_size,False,device,render)
+        net1_score += result
 
-    return (net1_score - net2_score) / rounds
+    return net1_score / rounds
 
 if __name__ == '__main__':
     from models import Net
@@ -122,8 +126,10 @@ if __name__ == '__main__':
     net1 = Net(env.observation_space.shape,env.action_space.n)
     net2 = Net(env.observation_space.shape,env.action_space.n)
     device = 'cuda'
-    render = True
-    net1_result,step = play_game(env,mcts_stores,None,net1,net2,0,mcts_searches=100,mcts_batch_size=10,
-                                net1_plays_first=False,device=device,render=render)
+    # render = True
+    # net1_result,step = play_game(env,mcts_stores,None,net1,net2,0,mcts_searches=100,mcts_batch_size=10,
+    #                         net1_plays_first=False,device=device,render=render)
+    #
+    # print(net1_result,step)
 
-    print(net1_result,step)
+    print(evaluate_network(env,net1,net2,20,search_num=5,batch_size=5,device=device,render=False))

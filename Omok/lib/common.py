@@ -3,6 +3,8 @@ import numpy as np
 from lib import mcts
 from lib import envs
 from termcolor import colored
+import multiprocessing as mp
+
 
 def play_game(env,mcts_stores,replay_buffer,net1,net2
               ,steps_before_tau_0,mcts_searches,mcts_batch_size
@@ -106,16 +108,21 @@ def play_game(env,mcts_stores,replay_buffer,net1,net2
 
             result = -result
 
-    return net1_result, step, return_history
+    return net1_result, step, h
 
 def evaluate_network(env,net1,net2,rounds,search_num=200,batch_size=10,device='cpu',render=False):
     net1_score = 0
     mcts_stores = [mcts.MCTS(env),mcts.MCTS(env)]
     for round in range(rounds):
-        result,_ = play_game(env,mcts_stores,None,net1,net2,0,search_num,batch_size,False,device,render)
+        result,_,_ = play_game(env,mcts_stores,None,net1,net2,0
+                             ,search_num,batch_size,False,device
+                             ,render,return_history=False)
         net1_score += result
 
     return net1_score / rounds
+
+
+
 
 if __name__ == '__main__':
     from models import Net

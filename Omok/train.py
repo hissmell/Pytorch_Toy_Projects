@@ -16,77 +16,58 @@ import torch.nn.functional as F
 
 import multiprocessing as mp
 
-NUM_WORKERS = 4
+NUM_WORKERS = 3
 PLAY_EPISODE = 1
 MCTS_SEARCHES = 100
 MCTS_BATCH_SIZE = 10
 REPLAY_BUFFER = 10000
 LEARNING_RATE = 0.01
-BATCH_SIZE = 256
+BATCH_SIZE = 128
 TRAIN_ROUNDS = 10
-MIN_REPLAY_TO_TRAIN = 2000
-
+MIN_REPLAY_TO_TRAIN = 4000
 TO_BE_BEST_NET = 0.05
 
 EVALUATE_EVERY_STEP = 100
-EVALUATION_ROUNDS = 20
+EVALUATION_ROUNDS = 10
 STEPS_BEFORE_TAU_0 = 10
 
 # 멀티프로세싱으로 데이터 수집 가속
-class Worker(mp.Process):
-    def __init__(self,env,local_net,name
-                 ,global_game_steps,global_train_steps
-                 ,buffer_queue,global_replay_buffer_size):
-        super(Worker, self).__init__()
-        self.env = env
-        self.local_net = copy.deepcopy(local_net)
-        self.name = name
-        self.global_game_steps = global_game_steps
-        self.global_train_steps = global_train_steps
-        self.buffer_queue = buffer_queue
-        self.global_replay_buffer_size = global_replay_buffer_size
+def mp_play_game(env,local_net,name
+             ,global_game_steps,global_train_steps
+             ,buffer_queue,global_replay_buffer_size
+             ,best_idx
+             ,device='cpu'):
+    mcts_stores = mcts.MCTS(env)
+    t = time.time()
 
-    def run(self):
-        mcts_stores = mcts.MCTS(env)
-        t = time.time()
-        prev_nodes = len(mcts_stores)
-        game_steps = 0
-        game_nodes = 0
-        for _ in range(PLAY_EPISODE):
-            _, steps, game_history = common.play_game(env, mcts_stores, replay_buffer=None
-                                                      ,net1=best_net, net2=best_net
-                                                      ,steps_before_tau_0=STEPS_BEFORE_TAU_0
-                                                      ,mcts_searches=MCTS_SEARCHES
-                                                      ,mcts_batch_size=MCTS_BATCH_SIZE, device=device
-                                                      ,render=False,return_history=True)
-            game_steps += steps
-            game_nodes += len(mcts_stores) - prev_nodes
-            prev_nodes = len(mcts_stores)
-            mcts_stores.clear()
+    _, game_steps, game_history = common.play_game(env, mcts_stores, replay_buffer=None
+                                              ,net1=local_net, net2=local_net
+                                              ,steps_before_tau_0=STEPS_BEFORE_TAU_0
+                                              ,mcts_searches=MCTS_SEARCHES
+                                              ,mcts_batch_size=MCTS_BATCH_SIZE, device=device
+                                              ,render=False,return_history=True)
+    dt = time.time() - t
+    step_speed = game_steps / dt
+    node_speed = len(mcts_stores) / dt
+    print(colored(f"------------------------------------------------------------\n"
+                  f"(Worker : {name})\n"
+                  f"Train steps : {global_train_steps.value}"
+                  f" Game steps : {global_game_steps.value}"
+                  f" Game length : {game_steps}\n"
+                  f"------------------------------------------------------------", 'red'))
+    print(colored(f"  * Used nodes in one game : {len(mcts_stores) // PLAY_EPISODE:d} \n"
+                  f"  * Best Performance step : {best_idx} ||"
+                  f"  Replay buffer size : {global_replay_buffer_size.value}\n"
+                  f"  * Game speed : {step_speed:.2f} moves/sec ||"
+                  f"  Calculate speed : {node_speed:.2f} node expansions/sec \n"
+                  , 'cyan'))
 
-        dt = time.time() - t
-        step_speed = game_steps / dt
-        node_speed = game_nodes / dt
-        print(colored(f"------------------------------------------------------------\n"
-                      f"(Worker : {self.name})\n"
-                      f"Train steps : {self.global_game_steps.value}"
-                      f" Game steps : {self.global_train_steps.value}"
-                      f" Game length : {game_steps}"
-                      f"------------------------------------------------------------", 'red'))
-        print(colored(f"  Used nodes in one game : {game_nodes // PLAY_EPISODE:d} \n"
-                      f"  Best Performance step : {best_idx} ||"
-                      f"  Replay buffer size : {self.global_replay_buffer_size.value}\n"
-                      f"  Game speed : {step_speed:.2f} moves/sec ||"
-                      f"  Calculate speed : {node_speed:.2f} node expansions/sec \n"
-                      , 'cyan'))
+    with global_game_steps.get_lock():
+        global_game_steps.value += 1
 
-        with self.global_game_steps.get_lock():
-            self.global_game_steps.value += 1
-
-        for exp in game_history:
-            self.buffer_queue.put(exp)
-
-
+    for exp in game_history:
+        buffer_queue.put(exp)
+    del mcts_stores
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -107,23 +88,31 @@ if __name__ == '__main__':
     global_game_step = mp.Value('i',0)
     global_train_step = mp.Value('i',0)
     global_replay_buffer_size = mp.Value('i', 0)
-    buffer_queue = mp.Queue(maxsize=1000)
+
     best_idx = 0
     with ptan.common.utils.TBMeanTracker(writer,batch_size=10) as tb_tracker:
         while True:
-            # 데이터 수집
-            workers = [Worker(env=env, local_net=best_net, name=f"Worker{i:02d}", global_game_steps=global_game_step,
-                              global_train_steps=global_train_step, buffer_queue=buffer_queue,
-                              global_replay_buffer_size=global_replay_buffer_size) for i in range(NUM_WORKERS)]
-            [worker.start() for worker in workers]
-            [worker.join() for worker in workers]
-            [worker.close() for worker in workers]
+            for _ in range(PLAY_EPISODE):
+                # 멀티 프로세스들마다 게임 데이터 수집
+                buffer_queue = mp.Manager().Queue()
+                workers = [mp.Process(target=mp_play_game,
+                                      args=(env,best_net,f"Worker{i:02d}",
+                                            global_game_step,
+                                            global_train_step,
+                                            buffer_queue,
+                                            global_replay_buffer_size,
+                                            best_idx,
+                                            device)) for i in range(NUM_WORKERS)]
 
-            # 수집한 데이터를 replay_buffer에 저장
-            while not buffer_queue.empty():
-                replay_buffer.append(buffer_queue.get())
+                [worker.start() for worker in workers]
+                [worker.join() for worker in workers]
+                [worker.close() for worker in workers]
+
+                # 수집한 데이터들을 replay_buffer로 저장
+                while not buffer_queue.empty():
+                    replay_buffer.append(buffer_queue.get())
+
             global_replay_buffer_size.value = len(replay_buffer)
-
             if global_replay_buffer_size.value < MIN_REPLAY_TO_TRAIN:
                 continue
 
@@ -171,8 +160,3 @@ if __name__ == '__main__':
                     file_name = os.path.join(save_dir_path, f"best_{best_idx:03d}_{global_train_step.value:05d}"
                                                             f"_performance_{test_result:.4f}.pth")
                     torch.save(net.state_dict(), file_name)
-
-
-
-
-

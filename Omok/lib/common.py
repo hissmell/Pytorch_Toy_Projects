@@ -2,9 +2,10 @@ import torch
 import numpy as np
 from lib import mcts
 from lib import envs
+from lib import models
+
 from termcolor import colored
 import multiprocessing as mp
-
 
 def play_game(env,mcts_stores,replay_buffer,net1,net2
               ,steps_before_tau_0,mcts_searches,mcts_batch_size
@@ -121,7 +122,12 @@ def evaluate_network(env,net1,net2,rounds,search_num=200,batch_size=10,device='c
 
     return net1_score / rounds
 
-
+def load_model(load_path=None,device='cpu'):
+    env = envs.Omok(9)
+    net = models.Net(env.observation_space.shape,env.action_space.n)
+    if not load_path is None:
+        net.load_state_dict(torch.load(load_path,map_location=device))
+    return net
 
 
 if __name__ == '__main__':

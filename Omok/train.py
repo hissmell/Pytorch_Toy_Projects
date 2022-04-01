@@ -20,7 +20,7 @@ NUM_WORKERS = 3
 PLAY_EPISODE = 1
 MCTS_SEARCHES = 100
 MCTS_BATCH_SIZE = 10
-REPLAY_BUFFER = 10000
+REPLAY_BUFFER = 8000
 LEARNING_RATE = 0.01
 BATCH_SIZE = 128
 TRAIN_ROUNDS = 10
@@ -28,11 +28,11 @@ MIN_REPLAY_TO_TRAIN = 4000
 TO_BE_BEST_NET = 0.05
 
 EVALUATE_EVERY_STEP = 100
-EVALUATION_ROUNDS = 10
+EVALUATION_ROUNDS = 5
 STEPS_BEFORE_TAU_0 = 10
 
 # 멀티프로세싱으로 데이터 수집 가속
-def mp_play_game(env,local_net,name
+def mp_collect_experience(env,local_net,name
              ,global_game_steps,global_train_steps
              ,buffer_queue,global_replay_buffer_size
              ,best_idx
@@ -69,6 +69,18 @@ def mp_play_game(env,local_net,name
         buffer_queue.put(exp)
     del mcts_stores
 
+def mp_evaluate_network(env,net, best_net,global_net1_score,search_num,batch_size,render,rounds, device):
+    net1_score = 0.0
+    for round in range(rounds):
+        mcts_stores = [mcts.MCTS(env), mcts.MCTS(env)]
+        result,_,_ = common.play_game(env,mcts_stores,None,net,best_net,0
+                                     ,search_num,batch_size,False,device
+                                     ,render,return_history=False)
+        net1_score += result
+        del mcts_stores
+    global_net1_score.value += net1_score / rounds
+
+
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -95,7 +107,7 @@ if __name__ == '__main__':
             for _ in range(PLAY_EPISODE):
                 # 멀티 프로세스들마다 게임 데이터 수집
                 buffer_queue = mp.Manager().Queue()
-                workers = [mp.Process(target=mp_play_game,
+                workers = [mp.Process(target=mp_collect_experience,
                                       args=(env,best_net,f"Worker{i:02d}",
                                             global_game_step,
                                             global_train_step,
@@ -142,15 +154,27 @@ if __name__ == '__main__':
                 sum_value_loss += loss_value_v.item()
                 sum_policy_loss += loss_policy_v.item()
 
+            global_train_step.value += 1
             tb_tracker.track("loss_total", sum_loss / TRAIN_ROUNDS, global_train_step.value)
             tb_tracker.track("loss_value", sum_value_loss / TRAIN_ROUNDS, global_train_step.value)
             tb_tracker.track("loss_policy", sum_policy_loss / TRAIN_ROUNDS, global_train_step.value)
 
             # evaluate net
             if global_train_step.value % EVALUATE_EVERY_STEP == 0:
-                test_result = common.evaluate_network(env,net, best_net,
-                                                      search_num=MCTS_SEARCHES*2,batch_size=MCTS_BATCH_SIZE,
-                                                      render=False,rounds=EVALUATION_ROUNDS, device=device)
+                global_net1_score = mp.Value('d',0.0)
+                workers = [mp.Process(target=mp_evaluate_network,
+                                      args=(env,net, best_net
+                                            ,global_net1_score
+                                            ,MCTS_SEARCHES
+                                            ,MCTS_BATCH_SIZE
+                                            ,False
+                                            ,EVALUATION_ROUNDS
+                                            ,device)) for _ in range(NUM_WORKERS)]
+                [worker.start() for worker in workers]
+                [worker.join() for worker in workers]
+                [worker.close() for worker in workers]
+
+                test_result = global_net1_score.value / NUM_WORKERS
                 print("Net evaluated, test_result = %.2f" % test_result)
                 writer.add_scalar("eval_result_ratio", test_result, global_train_step.value)
                 if test_result > TO_BE_BEST_NET:

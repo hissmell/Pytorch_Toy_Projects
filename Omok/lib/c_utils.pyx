@@ -7,6 +7,7 @@ def check_action_type(float[:,:] board_array,int action,int turn,int board_size)
     cdef int max_strike, strike
     cdef int find_stones, opponent_color
     cdef int count_3, count_4
+    cdef int HARD_BOUND_L, HARD_BOUND_R
     cdef int AROUND_STONE, HARD_BOUND, WEAK_BOUND_L, WEAK_BOUND_R
 
     check_x = action // board_size
@@ -19,27 +20,32 @@ def check_action_type(float[:,:] board_array,int action,int turn,int board_size)
     # 가로 체크
     y = check_y + 1
     strike = 1
+    HARD_BOUND_L = 0
     while 1:
-        if y >= board_size or y < 0:
+        if (y >= board_size or y < 0) or (board_array[check_x][y] == opponent_color):
+            HARD_BOUND_L = 1
             break
-        if board_array[check_x][y] == opponent_color or board_array[check_x][y] == 0:
+        if board_array[check_x][y] == 0:
             break
         if board_array[check_x][y] == turn:
             strike += 1
         y += 1
 
     y = check_y - 1
+    HARD_BOUND_R = 0
     while 1:
-        if y >= board_size or y < 0:
+        if (y >= board_size or y < 0) or (board_array[check_x][y] == opponent_color):
+            HARD_BOUND_R = 1
             break
-        if board_array[check_x][y] == opponent_color or board_array[check_x][y] == 0:
+        if board_array[check_x][y] == 0:
             break
         if board_array[check_x][y] == turn:
             strike += 1
         y -= 1
 
     if strike == 4:
-        count_4 += 1
+        if not (HARD_BOUND_L and HARD_BOUND_R):
+            count_4 += 1
 
     if max_strike < strike:
         max_strike = strike
@@ -47,27 +53,32 @@ def check_action_type(float[:,:] board_array,int action,int turn,int board_size)
     # 세로 체크
     x = check_x + 1
     strike = 1
+    HARD_BOUND_L = 0
     while 1:
-        if x >= board_size or x < 0:
+        if (x >= board_size or x < 0) or (board_array[x][check_y] == opponent_color):
+            HARD_BOUND_L = 1
             break
-        if board_array[x][check_y] == opponent_color or board_array[x][check_y] == 0:
+        if  board_array[x][check_y] == 0:
             break
         if board_array[x][check_y] == turn:
             strike += 1
         x += 1
 
+    HARD_BOUND_R = 0
     x = check_x - 1
     while 1:
-        if x >= board_size or x < 0:
+        if (x >= board_size or x < 0) or (board_array[x][check_y] == opponent_color):
+            HARD_BOUND_R = 1
             break
-        if board_array[x][check_y] == opponent_color or board_array[x][check_y] == 0:
+        if board_array[x][check_y] == 0:
             break
         if board_array[x][check_y] == turn:
             strike += 1
         x -= 1
 
     if strike == 4:
-        count_4 += 1
+        if not (HARD_BOUND_L and HARD_BOUND_R):
+            count_4 += 1
 
     if max_strike < strike:
         max_strike = strike
@@ -76,10 +87,12 @@ def check_action_type(float[:,:] board_array,int action,int turn,int board_size)
     x = check_x + 1
     y = check_y - 1
     strike = 1
+    HARD_BOUND_L = 0
     while 1:
-        if (x >= board_size or x < 0) or (y >= board_size or y < 0):
+        if ((x >= board_size or x < 0) or (y >= board_size or y < 0)) or (board_array[x][y] == opponent_color):
+            HARD_BOUND_L = 1
             break
-        if board_array[x][y] == opponent_color or board_array[x][y] == 0:
+        if  board_array[x][y] == 0:
             break
         if board_array[x][y] == turn:
             strike += 1
@@ -88,10 +101,12 @@ def check_action_type(float[:,:] board_array,int action,int turn,int board_size)
 
     x = check_x - 1
     y = check_y + 1
+    HARD_BOUND_R = 0
     while 1:
-        if (x >= board_size or x < 0) or (y >= board_size or y < 0):
+        if ((x >= board_size or x < 0) or (y >= board_size or y < 0)) or (board_array[x][y] == opponent_color):
+            HARD_BOUND_R = 1
             break
-        if board_array[x][y] == opponent_color or board_array[x][y] == 0:
+        if board_array[x][y] == 0:
             break
         if board_array[x][y] == turn:
             strike += 1
@@ -99,7 +114,8 @@ def check_action_type(float[:,:] board_array,int action,int turn,int board_size)
         y += 1
 
     if strike == 4:
-        count_4 += 1
+        if not (HARD_BOUND_L and HARD_BOUND_R):
+            count_4 += 1
 
     if max_strike < strike:
         max_strike = strike
@@ -108,10 +124,12 @@ def check_action_type(float[:,:] board_array,int action,int turn,int board_size)
     x = check_x - 1
     y = check_y - 1
     strike = 1
+    HARD_BOUND_L = 0
     while 1:
-        if (x >= board_size or x < 0) or (y >= board_size or y < 0):
+        if ((x >= board_size or x < 0) or (y >= board_size or y < 0)) or (board_array[x][y] == opponent_color):
+            HARD_BOUND_L = 1
             break
-        if board_array[x][y] == opponent_color or board_array[x][y] == 0:
+        if board_array[x][y] == 0:
             break
         if board_array[x][y] == turn:
             strike += 1
@@ -120,10 +138,12 @@ def check_action_type(float[:,:] board_array,int action,int turn,int board_size)
 
     x = check_x + 1
     y = check_y + 1
+    HARD_BOUND_R = 0
     while 1:
-        if (x >= board_size or x < 0) or (y >= board_size or y < 0):
+        if ((x >= board_size or x < 0) or (y >= board_size or y < 0)) or (board_array[x][y] == opponent_color):
+            HARD_BOUND_R = 1
             break
-        if board_array[x][y] == opponent_color or board_array[x][y] == 0:
+        if board_array[x][y] == 0:
             break
         if board_array[x][y] == turn:
             strike += 1
@@ -131,7 +151,8 @@ def check_action_type(float[:,:] board_array,int action,int turn,int board_size)
         y += 1
 
     if strike == 4:
-        count_4 += 1
+        if not (HARD_BOUND_L and HARD_BOUND_R):
+            count_4 += 1
 
     if max_strike < strike:
         max_strike = strike

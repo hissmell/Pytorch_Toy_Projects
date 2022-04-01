@@ -97,9 +97,9 @@ def play_game(env,mcts_stores,replay_buffer,net1,net2
         if step >= steps_before_tau_0:
             tau = 0.08
 
+
+    h = []
     if replay_buffer is not None or return_history:
-        if return_history:
-            h = []
         for state, cur_player, probs in reversed(game_history):
             if replay_buffer is not None:
                 replay_buffer.append((state, cur_player, probs, result))

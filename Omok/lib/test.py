@@ -14,9 +14,9 @@ if __name__ == '__main__':
     done = False
     while not done:
         print(env.render())
-        if turn == 'O':
+        if turn == '.':
             mcts1.update_root_node(env,obs)
-            mcts1.search_batch(count=128,batch_size=64,state_np=obs,player=BLACK,net=None,device='cpu')
+            mcts1.search_batch(count=32,batch_size=2,state_np=obs,player=BLACK,net=None,device='cpu')
             prob, value = mcts1.get_policy_value(obs,tau=0)
             action = np.random.choice(mcts1.all_action_list,p=prob)
             print("Player 1 Nodes :", len(mcts1.probs))

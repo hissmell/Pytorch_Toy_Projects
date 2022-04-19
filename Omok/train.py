@@ -18,18 +18,18 @@ import multiprocessing as mp
 
 NUM_WORKERS = 3
 PLAY_EPISODE = 1
-MCTS_SEARCHES = 100
+MCTS_SEARCHES = 160
 MCTS_BATCH_SIZE = 10
 REPLAY_BUFFER = 8000
-LEARNING_RATE = 0.01
+LEARNING_RATE = 0.005
 BATCH_SIZE = 128
-TRAIN_ROUNDS = 10
+TRAIN_ROUNDS = 5
 MIN_REPLAY_TO_TRAIN = 4000
 TO_BE_BEST_NET = 0.05
 
 EVALUATE_EVERY_STEP = 100
-EVALUATION_ROUNDS = 5
-STEPS_BEFORE_TAU_0 = 10
+EVALUATION_ROUNDS = 10
+STEPS_BEFORE_TAU_0 = 5
 
 # 멀티프로세싱으로 데이터 수집 가속
 def mp_collect_experience(env,local_net,name
@@ -165,7 +165,7 @@ if __name__ == '__main__':
                 workers = [mp.Process(target=mp_evaluate_network,
                                       args=(env,net, best_net
                                             ,global_net1_score
-                                            ,MCTS_SEARCHES
+                                            ,MCTS_SEARCHES*2
                                             ,MCTS_BATCH_SIZE
                                             ,False
                                             ,EVALUATION_ROUNDS

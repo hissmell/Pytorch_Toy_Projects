@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import copy
 from lib import mcts
 from lib import envs
 from lib import models
@@ -38,7 +39,7 @@ def play_game(env,mcts_stores,replay_buffer,net1,net2
         net1_color = 1
 
     step = 0
-    tau = 0.08 if steps_before_tau_0 >= step else 1
+    tau = 0.08 if steps_before_tau_0 <= step else 1
     game_history = []
 
     result = None
@@ -105,7 +106,7 @@ def play_game(env,mcts_stores,replay_buffer,net1,net2
             if replay_buffer is not None:
                 replay_buffer.append((state, cur_player, probs, result))
             if return_history:
-                h.append((state, cur_player, probs, result))
+                h.append((copy.deepcopy(state), cur_player, probs, result))
 
             result = -result
 
@@ -128,6 +129,16 @@ def load_model(load_path=None,device='cpu'):
     if not load_path is None:
         net.load_state_dict(torch.load(load_path,map_location=device))
     return net
+
+def render_history(env,history):
+    game_length = len(history)
+    print(f"Game length : {game_length:d}")
+    for step,(state,cur_player,probs,result) in enumerate(history):
+        print(f"Step : {step} (Current player {cur_player})")
+        print(f"Reward : {result}")
+        print("Probability :")
+        print(probs)
+        print(env.render_observation(state))
 
 
 if __name__ == '__main__':

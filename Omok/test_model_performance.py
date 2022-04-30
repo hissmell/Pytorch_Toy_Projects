@@ -2,10 +2,12 @@ from lib import common, envs, models
 import torch
 import numpy as np
 
-net_path = './saves/Exp_01/best_002_00200_performance_0.0667.pth'
+net_path = './saves/Exp_01/best_004_00700_performance_0.5000.pth'
 device = 'cuda'
 net = common.load_model(net_path,device)
+net.eval()
 net.to(device)
+
 env = envs.Omok(board_size=9)
 top = 3
 

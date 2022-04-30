@@ -11,8 +11,6 @@ _, game_steps, game_history = common.play_game(env, mcts_stores, replay_buffer=N
                                               ,steps_before_tau_0=10
                                               ,mcts_searches=100
                                               ,mcts_batch_size=8, device='cuda'
-                                              ,render=True,return_history=True)
-for state,_,_,_ in game_history:
-    print(env.render_observation(state))
+                                              ,render=True,return_history=True,gamma=0.90)
 
 common.render_history(env,game_history)

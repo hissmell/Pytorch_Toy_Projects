@@ -16,23 +16,24 @@ import torch.nn.functional as F
 
 import multiprocessing as mp
 
-NUM_WORKERS = 3
+NUM_WORKERS = 2
 PLAY_EPISODE = 1
-MCTS_SEARCHES = 160
-MCTS_BATCH_SIZE = 10
+MCTS_SEARCHES = 100
+MCTS_BATCH_SIZE = 8
 REPLAY_BUFFER = 8000
 LEARNING_RATE = 0.005
 BATCH_SIZE = 128
-TRAIN_ROUNDS = 5
-MIN_REPLAY_TO_TRAIN = 4000
+TRAIN_ROUNDS = 1
+MIN_REPLAY_TO_TRAIN = 2000
 TO_BE_BEST_NET = 0.05
+GAMMA = 0.93
 
 EVALUATE_EVERY_STEP = 100
 EVALUATION_ROUNDS = 10
 STEPS_BEFORE_TAU_0 = 5
 
 # 멀티프로세싱으로 데이터 수집 가속
-def mp_collect_experience(env,local_net,name
+def mp_collect_experience(env,local_net,name,gamma
              ,global_game_steps,global_train_steps
              ,buffer_queue,global_replay_buffer_size
              ,best_idx
@@ -45,7 +46,7 @@ def mp_collect_experience(env,local_net,name
                                               ,steps_before_tau_0=STEPS_BEFORE_TAU_0
                                               ,mcts_searches=MCTS_SEARCHES
                                               ,mcts_batch_size=MCTS_BATCH_SIZE, device=device
-                                              ,render=False,return_history=True)
+                                              ,render=False,return_history=True,gamma=gamma)
     dt = time.time() - t
     step_speed = game_steps / dt
     node_speed = len(mcts_stores) / dt
@@ -109,6 +110,7 @@ if __name__ == '__main__':
                 buffer_queue = mp.Manager().Queue()
                 workers = [mp.Process(target=mp_collect_experience,
                                       args=(env,best_net,f"Worker{i:02d}",
+                                            GAMMA,
                                             global_game_step,
                                             global_train_step,
                                             buffer_queue,
@@ -132,6 +134,9 @@ if __name__ == '__main__':
             sum_loss = 0.0
             sum_value_loss = 0.0
             sum_policy_loss = 0.0
+            grad_l2 = 0.0
+            grad_max = 0.0
+            grad_var = 0.0
 
             for _ in range(TRAIN_ROUNDS):
                 batch = random.sample(replay_buffer, BATCH_SIZE)
@@ -154,10 +159,21 @@ if __name__ == '__main__':
                 sum_value_loss += loss_value_v.item()
                 sum_policy_loss += loss_policy_v.item()
 
+                grads = np.concatenate([p.grad.to('cpu').data.numpy().flatten()
+                                        for p in net.parameters()
+                                        if p.grad is not None])
+
+                grad_l2 += np.sqrt(np.mean(np.square(grads)))
+                grad_max += np.max(np.abs(grads))
+                grad_var += np.var(grads)
+
             global_train_step.value += 1
             tb_tracker.track("loss_total", sum_loss / TRAIN_ROUNDS, global_train_step.value)
             tb_tracker.track("loss_value", sum_value_loss / TRAIN_ROUNDS, global_train_step.value)
             tb_tracker.track("loss_policy", sum_policy_loss / TRAIN_ROUNDS, global_train_step.value)
+            tb_tracker.track("grad_l2", grad_l2 / TRAIN_ROUNDS, global_train_step.value)
+            tb_tracker.track("grad_max", grad_max / TRAIN_ROUNDS, global_train_step.value)
+            tb_tracker.track("grad_var", grad_var / TRAIN_ROUNDS, global_train_step.value)
 
             # evaluate net
             if global_train_step.value % EVALUATE_EVERY_STEP == 0:

@@ -11,7 +11,7 @@ import multiprocessing as mp
 def play_game(env,mcts_stores,replay_buffer,net1,net2
               ,steps_before_tau_0,mcts_searches,mcts_batch_size
               ,net1_plays_first=False,device='cpu',render=False
-              ,return_history=False):
+              ,return_history=False,gamma=1.0):
     """
     Play one single game, memorizing transitions into the replay buffer
     :param mcts_stores: could be None or single MCTS or two MCTSes for individual net
@@ -108,7 +108,7 @@ def play_game(env,mcts_stores,replay_buffer,net1,net2
             if return_history:
                 h.append((copy.deepcopy(state), cur_player, probs, result))
 
-            result = -result
+            result = -result * gamma
 
     return net1_result, step, h
 

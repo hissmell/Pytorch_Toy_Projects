@@ -127,7 +127,7 @@ def evaluate_network(env,net1,net2,rounds,search_num=200,batch_size=10,device='c
 
 def load_model(load_path=None,device='cpu'):
     env = envs.Omok(9)
-    net = models.Net(env.observation_space.shape,env.action_space.n)
+    net = models.NetV2()
     if not load_path is None:
         net.load_state_dict(torch.load(load_path,map_location=device))
     return net
@@ -146,7 +146,7 @@ def render_history(env,history):
 def render_game_data(game_data):
     game_history = []
     for i in range(len(game_data['states'])):
-        exp = (np.array(game_data['states'][i]), None, np.array(game_data['probs'][i]), game_data['results'][i])
+        exp = (np.array(game_data['states'][i]), None, np.array(game_data['probs'][i]), game_data['rewards'][i])
         game_history.append(exp)
     render_history(envs.Omok(9),game_history)
 
@@ -161,15 +161,19 @@ def gathering_dir_setting(exp_name,iter_num = None,device = 'cpu'):
     if version == 0:
         net = models.Net(env.observation_space.shape,env.action_space.n).to(device)
     elif version == 1:
-        pass
+        net = models.NetV2().to(device)
 
     exp_dir_path = os.path.join(os.getcwd(),exp_name)
     os.makedirs(exp_dir_path,exist_ok=True)
 
-    if iter_num == None:
+
+    if iter_num == None or iter_num == 0:
         iter_num = len(os.listdir(exp_dir_path))
         iter_num = max(0,iter_num-1)
         print('Current_iteration_number :',iter_num)
+    else:
+        past_iter_dir_path = os.path.join(exp_dir_path,f"iter_{iter_num-1:02d}")
+        net = torch.load(os.path.join(past_iter_dir_path,'net.pth'),map_location=device)
 
     iter_dir_path = os.path.join(exp_dir_path,f"iter_{iter_num:02d}")
     data_dir_path = os.path.join(iter_dir_path,'raw_data')
@@ -182,7 +186,7 @@ def gathering_dir_setting(exp_name,iter_num = None,device = 'cpu'):
 
     return path_dict,net,iter_num
 
-def preprocessing_dir_setting(exp_name,iter_num=None):
+def preprocessing_dir_setting(exp_name,iter_num=None,device='cpu'):
     exp_dir_path = os.path.join(os.getcwd(), exp_name)
     os.makedirs(exp_dir_path, exist_ok=True)
 
@@ -201,6 +205,42 @@ def preprocessing_dir_setting(exp_name,iter_num=None):
     os.makedirs(data_dir_path, exist_ok=True)
 
     return path_dict,iter_num
+
+def training_dir_setting(exp_name,iter_num=None,device='cpu'):
+    version = int(exp_name.split('_')[0][-2:])
+    if version not in [0, 1]:
+        print('Version you entered :', version)
+        raise Exception('network version you entered is not supplied.')
+
+    env = envs.Omok(9)
+    env.reset()
+    if version == 0:
+        net = models.Net(env.observation_space.shape, env.action_space.n).to(device)
+    elif version == 1:
+        net = models.NetV2().to(device)
+
+    exp_dir_path = os.path.join(os.getcwd(), exp_name)
+
+    if iter_num == None or iter_num == 0:
+        iter_num = len(os.listdir(exp_dir_path))
+        iter_num = max(0, iter_num - 1)
+        print('Current_iteration_number :', iter_num)
+    else:
+        past_iter_dir_path = os.path.join(exp_dir_path, f"iter_{iter_num - 1:02d}")
+        net = torch.load(os.path.join(past_iter_dir_path, 'net.pth'), map_location=device)
+
+    iter_dir_path = os.path.join(exp_dir_path, f"iter_{iter_num:02d}")
+    data_dir_path = os.path.join(iter_dir_path, 'dataset.json')
+
+    net.to(device)
+    net_save_path = os.path.join(iter_dir_path,'net_path.pth')
+
+    path_dict = {}
+    path_dict['iter_dir_path'] = iter_dir_path
+    path_dict['data_dir_path'] = data_dir_path
+    path_dict['net_save_path'] = net_save_path
+
+    return path_dict, net, iter_num
 
 if __name__ == '__main__':
     from models import Net

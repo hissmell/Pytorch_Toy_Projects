@@ -29,7 +29,7 @@ STEPS_BEFORE_TAU_0 = 5
 
 ''' Experiment setting '''
 ' If you change the network structure, make new experiment folder! '
-EXP_NAME = 'NetV00_00' #netV[version_number]_exp_number'
+EXP_NAME = 'NetV01_00' #netV[version_number]_exp_number'
 iter_num = None # if you put None as input, last_iter_num is returned
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 ''' Main body '''

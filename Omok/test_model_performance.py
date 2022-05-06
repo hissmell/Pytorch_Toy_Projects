@@ -2,7 +2,8 @@ from lib import common, envs, models
 import torch
 import numpy as np
 
-net_path = './saves/Exp_01/best_004_00700_performance_0.5000.pth'
+net_path = 'C:\\Users\\82102\\PycharmProjects\\ToyProject01\\' \
+           'Pytorch_Toy_Projects\\Omok\\NetV01_00\\iter_00\\net_path.pth'
 device = 'cuda'
 net = common.load_model(net_path,device)
 net.eval()

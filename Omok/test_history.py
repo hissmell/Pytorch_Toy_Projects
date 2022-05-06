@@ -17,11 +17,11 @@ path_dict,net,iter_num = common.gathering_dir_setting(exp_name=EXP_NAME
 
 env = envs.Omok(board_size=9)
 game_num = 7
-with open(os.path.join(path_dict['data_dir_path'],f'game_{game_num:d}.json'),'r') as f:
-    game_data = json.load(f)
+with open(os.path.join(path_dict['iter_dir_path'],f'dataset.json'),'r') as f:
+    game_data = json.load(f)['valid']
 
 print(len(game_data['states']))
 print(len(game_data['probs']))
-print(len(game_data['results']))
+print(len(game_data['rewards']))
 
 common.render_game_data(game_data)

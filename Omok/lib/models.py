@@ -90,6 +90,105 @@ class Net(nn.Module):
         value = self.value(x)
         return policy,value
 
+class ConvolutionalBlock(nn.Module):
+    def __init__(self,inchannel_num,filter_num = 256):
+        super(ConvolutionalBlock, self).__init__()
+        self.conv = nn.Conv2d(inchannel_num,filter_num,kernel_size=3,stride=1,padding=1)
+        self.batch_norm = nn.BatchNorm2d(num_features=filter_num)
+        self.relu = nn.ReLU()
+
+    def forward(self,input):
+        x = self.conv(input)
+        x = self.batch_norm(x)
+        output = self.relu(x)
+        return output
+
+class ResidualBlock(nn.Module):
+    def __init__(self,in_channels,filter_num=256):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels,filter_num,kernel_size=3,stride=1,padding=1)
+        self.batch_norm1 = nn.BatchNorm2d(filter_num)
+        self.relu1 = nn.ReLU()
+        self.conv2 = nn.Conv2d(filter_num,filter_num,kernel_size=3,stride=1,padding=1)
+        self.batch_norm2 = nn.BatchNorm2d(filter_num)
+        self.relu2 = nn.ReLU()
+
+    def forward(self,input):
+        x = self.conv1(input)
+        x = self.batch_norm1(x)
+        x = self.relu1(x)
+        x = self.conv2(x)
+        x = self.batch_norm2(x)
+        x = torch.add(x,input)
+        x = self.relu2(x)
+        return x
+
+class NetV2(nn.Module):
+    def __init__(self):
+        super(NetV2, self).__init__()
+        self.convolutional_block = ConvolutionalBlock(2)
+        self.residual_tower = nn.Sequential(*[
+            ResidualBlock(256) for _ in range(19)
+        ])
+
+        #policy head
+        self.p_conv = nn.Conv2d(256,2,kernel_size=1,stride=1,padding=0)
+        self.p_batch_norm = nn.BatchNorm2d(2)
+        self.p_relu = nn.ReLU()
+        policy_conv_out = self._get_policy_conv_out()
+        self.p_dense = nn.Linear(policy_conv_out,81)
+
+        #value head
+        self.v_conv = nn.Conv2d(256,1,kernel_size=1,stride=1,padding=0)
+        self.v_batch_norm1 = nn.BatchNorm2d(1)
+        self.v_relu1 = nn.ReLU()
+        value_conv_out = self._get_value_conv_out()
+        self.v_dense1 = nn.Linear(value_conv_out,256)
+        self.v_relu2 = nn.ReLU()
+        self.v_dense2 = nn.Linear(256,1)
+        self.v_tanh = nn.Tanh()
+
+    def forward(self,input):
+        x = self.convolutional_block(input)
+        x = self.residual_tower(x)
+
+        p = self.p_conv(x)
+        p = self.p_batch_norm(p)
+        p = self.p_relu(p)
+        p = self.p_dense(p.view(p.size()[0],-1))
+
+        v = self.v_conv(x)
+        v = self.v_batch_norm1(v)
+        v = self.v_relu1(v)
+        v = self.v_dense1(v.view(v.size()[0],-1))
+        v = self.v_relu2(v)
+        v = self.v_dense2(v)
+        v = self.v_tanh(v)
+        return p,v
+
+    def _get_policy_conv_out(self):
+        temp = torch.zeros(1,2,9,9)
+        temp = self.convolutional_block(temp)
+        temp = self.residual_tower(temp)
+        temp = self.p_conv(temp)
+        temp = self.p_batch_norm(temp)
+        temp = self.p_relu(temp)
+        return int(np.prod(temp.size()))
+
+    def _get_value_conv_out(self):
+        temp = torch.zeros(1,2,9,9)
+        temp = self.convolutional_block(temp)
+        temp = self.residual_tower(temp)
+        temp = self.v_conv(temp)
+        temp = self.v_batch_norm1(temp)
+        temp = self.v_relu1(temp)
+        return int(np.prod(temp.size()))
+
+
+
+
+
+
 if __name__ == '__main__':
     from envs import Omok
     env = Omok(board_size=9)

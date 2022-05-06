@@ -53,7 +53,6 @@ class MCTS:
         (5) actions : list of actions (int 64) taken
         :return:
         '''
-        state_b = state_np.tobytes()
         states_b = []
         actions = []
         cur_state_np = state_np
@@ -125,12 +124,16 @@ class MCTS:
                 batch_var = torch.tensor(np.array(expand_states_np), dtype=torch.float32).to(device)
                 logits_var, values_var = net(batch_var)
                 probs_var = F.softmax(logits_var,dim=1)
-                values_np = values_var.data.to('cpu').numpy()[:,0]
+                values_np = values_var.data.to('cpu').numpy()[:,0] # 흑 플레이어 입장에서 value입니다.
                 probs_np = probs_var.data.to('cpu').numpy()
             else:
                 N = np.array(expand_states_np).shape[0]
                 probs_np = np.ones([N,self.action_size],dtype=np.float32) / self.action_size
                 values_np = np.ones([N],dtype=np.float32) / self.action_size
+
+            # 흑 플레이어 입장에서 예측된 value를 해당 노드 플레이어 입장에서 value로 조정합니다.
+            for ii in range(len(expand_players)):
+                values_np[ii] = values_np[ii] if expand_players[ii] == BLACK else -values_np[ii]
 
             for (leaf_state_b,states_b,actions),value,prob in zip(expand_queue,values_np,probs_np):
                 self.visit_count[leaf_state_b] = [0] * self.action_size

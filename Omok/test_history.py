@@ -2,15 +2,26 @@ from lib import envs
 from lib import common
 from lib import models
 from lib import mcts
+import torch
+import os
+import json
+import numpy as np
+
+EXP_NAME = 'NetV00_00' #netV[version_number]_exp_number'
+iter_num = None # if you put None as input, last_iter_num is returned
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+path_dict,net,iter_num = common.gathering_dir_setting(exp_name=EXP_NAME
+                                                          ,iter_num=iter_num
+                                                          ,device=device)
 
 env = envs.Omok(board_size=9)
-net = models.Net(env.observation_space.shape,env.action_space.n)
-mcts_stores = mcts.MCTS(env)
-_, game_steps, game_history = common.play_game(env, mcts_stores, replay_buffer=None
-                                              ,net1=net, net2=net
-                                              ,steps_before_tau_0=10
-                                              ,mcts_searches=100
-                                              ,mcts_batch_size=8, device='cuda'
-                                              ,render=True,return_history=True,gamma=0.90)
+game_num = 7
+with open(os.path.join(path_dict['data_dir_path'],f'game_{game_num:d}.json'),'r') as f:
+    game_data = json.load(f)
 
-common.render_history(env,game_history)
+print(len(game_data['states']))
+print(len(game_data['probs']))
+print(len(game_data['results']))
+
+common.render_game_data(game_data)

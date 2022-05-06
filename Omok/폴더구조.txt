@@ -1,0 +1,37 @@
+데이터 구조
+ - exp_name [네트워크구조에 따라서 다름] 
+     - iter_num[dir]
+         - raw_data[dir]
+         - dataset.json
+         - model_data.pth
+ - gather_data.py
+ - preprocess_data.py
+ - train_data.py
+---------------------------------------------------------
+# dir
+ - raw_data
+     gather_data.py에 의해서 수행된 자가게임 데이터의 원본이 저장된 디렉토리;
+     10000게임이 저장되어 있으며, step별 observation, 그 observation에서 mcts가 행동했던 probability distribution, reward들이 기록되어 있다.
+     reward는 흑플레이어 입장에서 기록되었다.
+     파일들은 .json형식으로 저장되었다.
+
+ - train_data & valid_data
+     preprocess_data.py 파일로 raw_data를 전처리하여 train_data와 valid_data로 나누어 저장한다,
+
+# python_file
+ - gather_data.py
+     exp_name, iter_num 을 하이퍼파라미터로 가진다.
+     이전 iter_num 디렉토리에 있는 model_data.pth를 이용하여 10000게임의 데이터를 수집한다.
+     만약 iter_num이 0이라면 학습되지 않은 초기 네트워크를 사용하여 게임을 진행한다.
+
+ - preprocess_data.py
+     exp_name, iter_num, train_ratio을 하이퍼파라미터로 가진다.
+     gamma = 1 - (1/iter_num)^2으로 return을 재조정한다.
+     한 게임에서 iter_num + 1만큼 게임이 끝난순간으로 부터의 데이터, 게임 중간의 데이터를 각각 샘플링한다.
+     raw_data에 존재하는 데이터들을 train_ratio에 따라 train_data, valid_data로 나누어 저장한다.
+
+ - train_data.py
+     exp_name, iter_num을 하이퍼파라미터로 가진다.
+     train_data, valid_data에 있는 데이터를 이용해서 네트워크를 훈련시킨다.
+     훈련이 된 모델은 iter_num 디렉토리에 저장한다.
+

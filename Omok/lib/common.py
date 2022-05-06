@@ -8,6 +8,8 @@ from lib import models
 from termcolor import colored
 import multiprocessing as mp
 
+import os
+
 def play_game(env,mcts_stores,replay_buffer,net1,net2
               ,steps_before_tau_0,mcts_searches,mcts_batch_size
               ,net1_plays_first=False,device='cpu',render=False
@@ -138,8 +140,67 @@ def render_history(env,history):
         print(f"Reward : {result}")
         print("Probability :")
         print(probs)
+        print('Top 1 action :',env.decode_action(np.argmax(probs)),f'{probs[np.argmax(probs)]*100:.2f}%')
         print(env.render_observation(state))
 
+def render_game_data(game_data):
+    game_history = []
+    for i in range(len(game_data['states'])):
+        exp = (np.array(game_data['states'][i]), None, np.array(game_data['probs'][i]), game_data['results'][i])
+        game_history.append(exp)
+    render_history(envs.Omok(9),game_history)
+
+def gathering_dir_setting(exp_name,iter_num = None,device = 'cpu'):
+    version = int(exp_name.split('_')[0][-2:])
+    if version not in [0,1]:
+        print('Version you entered :',version)
+        raise Exception('network version you entered is not supplied.')
+
+    env = envs.Omok(9)
+    env.reset()
+    if version == 0:
+        net = models.Net(env.observation_space.shape,env.action_space.n).to(device)
+    elif version == 1:
+        pass
+
+    exp_dir_path = os.path.join(os.getcwd(),exp_name)
+    os.makedirs(exp_dir_path,exist_ok=True)
+
+    if iter_num == None:
+        iter_num = len(os.listdir(exp_dir_path))
+        iter_num = max(0,iter_num-1)
+        print('Current_iteration_number :',iter_num)
+
+    iter_dir_path = os.path.join(exp_dir_path,f"iter_{iter_num:02d}")
+    data_dir_path = os.path.join(iter_dir_path,'raw_data')
+
+    path_dict = {}
+    path_dict['iter_dir_path'] = iter_dir_path
+    path_dict['data_dir_path'] = data_dir_path
+    os.makedirs(iter_dir_path, exist_ok=True)
+    os.makedirs(data_dir_path, exist_ok=True)
+
+    return path_dict,net,iter_num
+
+def preprocessing_dir_setting(exp_name,iter_num=None):
+    exp_dir_path = os.path.join(os.getcwd(), exp_name)
+    os.makedirs(exp_dir_path, exist_ok=True)
+
+    if iter_num == None:
+        iter_num = len(os.listdir(exp_dir_path))
+        iter_num = max(0, iter_num - 1)
+        print('Current_iteration_number :', iter_num)
+
+    iter_dir_path = os.path.join(exp_dir_path, f"iter_{iter_num:02d}")
+    data_dir_path = os.path.join(iter_dir_path, 'raw_data')
+
+    path_dict = {}
+    path_dict['iter_dir_path'] = iter_dir_path
+    path_dict['data_dir_path'] = data_dir_path
+    os.makedirs(iter_dir_path, exist_ok=True)
+    os.makedirs(data_dir_path, exist_ok=True)
+
+    return path_dict,iter_num
 
 if __name__ == '__main__':
     from models import Net

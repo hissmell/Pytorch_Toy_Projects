@@ -11,12 +11,13 @@ from lib import common, models, envs
 
 ''' Hyperparameters '''
 EXP_NAME = 'NetV01_00' #netV[version_number]_exp_number'
-iter_num = None
+iter_num = 1
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 BATCH_SIZE = 64
 MAX_EPOCH = 50
 LEARNING_RATE = 1e-3
+VALUE_WEIGHT = 100
 
 ''' Main body '''
 
@@ -45,7 +46,7 @@ print('Valid state shape :',valid_states.shape)
 print('Valid prob shape :',valid_probs.shape)
 print('Valid reward shape :',valid_rewards.shape)
 
-writer = SummaryWriter(comment=EXP_NAME + str(iter_num))
+writer = SummaryWriter(path_dict['record_dir_path'],comment=EXP_NAME + str(iter_num))
 optimizer = optim.Adam(net.parameters(),lr=LEARNING_RATE)
 best_valid_loss = 10000
 for epoch in range(MAX_EPOCH):
@@ -79,7 +80,7 @@ for epoch in range(MAX_EPOCH):
         pred_logits_var,pred_values_var = net(batch_states_var)
         pred_values_var = pred_values_var.squeeze(-1)
 
-        loss_value_var = F.mse_loss(batch_values_var,pred_values_var,reduction='sum')
+        loss_value_var = F.mse_loss(batch_values_var,pred_values_var,reduction='sum') * VALUE_WEIGHT
         loss_policy_var = -F.log_softmax(pred_logits_var,dim=1) * batch_probs_var
         loss_policy_var = loss_policy_var.sum()
 
@@ -127,7 +128,7 @@ for epoch in range(MAX_EPOCH):
         pred_logits_var, pred_values_var = net(batch_states_var)
         pred_values_var = pred_values_var.squeeze(-1)
 
-        loss_value_var = F.mse_loss(batch_values_var, pred_values_var, reduction='sum')
+        loss_value_var = F.mse_loss(batch_values_var, pred_values_var, reduction='sum') * VALUE_WEIGHT
         loss_policy_var = -F.log_softmax(pred_logits_var, dim=1) * batch_probs_var
         loss_policy_var = loss_policy_var.sum()
 

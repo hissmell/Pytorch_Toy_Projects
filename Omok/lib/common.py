@@ -173,7 +173,7 @@ def gathering_dir_setting(exp_name,iter_num = None,device = 'cpu'):
         print('Current_iteration_number :',iter_num)
     else:
         past_iter_dir_path = os.path.join(exp_dir_path,f"iter_{iter_num-1:02d}")
-        net = torch.load(os.path.join(past_iter_dir_path,'net.pth'),map_location=device)
+        net.load_state_dict(torch.load(os.path.join(past_iter_dir_path,'net_path.pth'),map_location=device))
 
     iter_dir_path = os.path.join(exp_dir_path,f"iter_{iter_num:02d}")
     data_dir_path = os.path.join(iter_dir_path,'raw_data')
@@ -227,18 +227,21 @@ def training_dir_setting(exp_name,iter_num=None,device='cpu'):
         print('Current_iteration_number :', iter_num)
     else:
         past_iter_dir_path = os.path.join(exp_dir_path, f"iter_{iter_num - 1:02d}")
-        net = torch.load(os.path.join(past_iter_dir_path, 'net.pth'), map_location=device)
+        net.load_state_dict(torch.load(os.path.join(past_iter_dir_path,'net_path.pth'),map_location=device))
 
     iter_dir_path = os.path.join(exp_dir_path, f"iter_{iter_num:02d}")
     data_dir_path = os.path.join(iter_dir_path, 'dataset.json')
-
+    net.train()
     net.to(device)
     net_save_path = os.path.join(iter_dir_path,'net_path.pth')
+
+    record_dir_path = os.path.join(iter_dir_path,"training_records")
 
     path_dict = {}
     path_dict['iter_dir_path'] = iter_dir_path
     path_dict['data_dir_path'] = data_dir_path
     path_dict['net_save_path'] = net_save_path
+    path_dict['record_dir_path'] = record_dir_path
 
     return path_dict, net, iter_num
 

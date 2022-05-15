@@ -3,7 +3,7 @@ import torch
 import numpy as np
 
 net_path = 'C:\\Users\\82102\\PycharmProjects\\ToyProject01\\' \
-           'Pytorch_Toy_Projects\\Omok\\NetV01_00\\iter_00\\net_path.pth'
+           'Pytorch_Toy_Projects\\Omok\\NetV01_00\\iter_01\\net_path.pth'
 device = 'cuda'
 net = common.load_model(net_path,device)
 net.eval()

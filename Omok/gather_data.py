@@ -18,7 +18,7 @@ import torch.nn.functional as F
 import multiprocessing as mp
 
 ''' Hyper parameters, DON'T CHANGE! '''
-MAX_GAME_NUM = 10000
+MAX_GAME_NUM = 13000
 NUM_WORKERS = 3
 PLAY_EPISODE = 1
 MCTS_SEARCHES = 100
@@ -30,7 +30,7 @@ STEPS_BEFORE_TAU_0 = 5
 ''' Experiment setting '''
 ' If you change the network structure, make new experiment folder! '
 EXP_NAME = 'NetV01_00' #netV[version_number]_exp_number'
-iter_num = None # if you put None as input, last_iter_num is returned
+iter_num = 1 # if you put None as input, last_iter_num is returned
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 ''' Main body '''
 # 멀티프로세싱으로 데이터 수집 가속
@@ -80,6 +80,7 @@ if __name__ == '__main__':
     path_dict,net,iter_num = common.gathering_dir_setting(exp_name=EXP_NAME
                                                           ,iter_num=iter_num
                                                           ,device=device)
+    net.eval()
     env = envs.Omok(board_size=9)
 
     while True:
@@ -90,7 +91,9 @@ if __name__ == '__main__':
                                         GAMMA,
                                         device)) for i in range(NUM_WORKERS)]
 
-            [worker.start() for worker in workers]
+            for i in range(NUM_WORKERS):
+                workers[i].start()
+                time.sleep(100)
             [worker.join() for worker in workers]
             [worker.close() for worker in workers]
 

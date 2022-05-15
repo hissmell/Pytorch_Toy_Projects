@@ -7,8 +7,8 @@ import os
 import json
 import numpy as np
 
-EXP_NAME = 'NetV00_00' #netV[version_number]_exp_number'
-iter_num = None # if you put None as input, last_iter_num is returned
+EXP_NAME = 'NetV01_00' #netV[version_number]_exp_number'
+iter_num = 1 # if you put None as input, last_iter_num is returned
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 path_dict,net,iter_num = common.gathering_dir_setting(exp_name=EXP_NAME
@@ -16,9 +16,9 @@ path_dict,net,iter_num = common.gathering_dir_setting(exp_name=EXP_NAME
                                                           ,device=device)
 
 env = envs.Omok(board_size=9)
-game_num = 7
+game_num = 10
 with open(os.path.join(path_dict['iter_dir_path'],f'dataset.json'),'r') as f:
-    game_data = json.load(f)['valid']
+    game_data = json.load(f)['train']
 
 print(len(game_data['states']))
 print(len(game_data['probs']))

@@ -46,9 +46,10 @@ if __name__ == '__main__':
     global_net1_draw = mp.Value('d',0.0)
     global_net1_lose = mp.Value('d',0.0)
 
-    net1_path = None
+    net1_path = 'C:\\Users\\82102\\PycharmProjects\\ToyProject01\\' \
+               'Pytorch_Toy_Projects\\Omok\\NetV01_00\\iter_02\\net_path.pth'
     net2_path = 'C:\\Users\\82102\\PycharmProjects\\ToyProject01\\' \
-               'Pytorch_Toy_Projects\\Omok\\NetV01_00\\iter_01\\net_path.pth'
+               'Pytorch_Toy_Projects\\Omok\\NetV01_00\\iter_00\\net_path.pth'
 
     # net2_path = 'C:\\Users\\82102\\PycharmProjects\\ToyProject01\\' \
     #        'Pytorch_Toy_Projects\\Omok\\NetV01_00\\iter_00\\net_path.pth'

@@ -11,12 +11,12 @@ from lib import common, models, envs
 
 ''' Hyperparameters '''
 EXP_NAME = 'NetV01_00' #netV[version_number]_exp_number'
-iter_num = 1
+iter_num = 2
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 BATCH_SIZE = 64
 MAX_EPOCH = 50
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 1e-4
 VALUE_WEIGHT = 100
 
 ''' Main body '''

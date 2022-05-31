@@ -4,6 +4,7 @@
          - raw_data[dir]
          - dataset.json
          - model_data.pth
+         - eval_result.txt
  - gather_data.py
  - preprocess_data.py
  - train_data.py
